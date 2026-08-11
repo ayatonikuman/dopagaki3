@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>とまらない -TOMARANAI-</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#0B0D14;overflow:hidden;
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",system-ui,sans-serif;
+    -webkit-tap-highlight-color:transparent;touch-action:none}
+  #wrap{height:100%;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;background:#BFE9FF;box-shadow:0 0 80px rgba(0,0,0,.7);cursor:none}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<script>
+(()=>{
+// ============================================================
+//  とまらない -TOMARANAI-
+//  勝手に加速し続ける。操作は左右とブレーキだけ。
+//  ぶつかっても落ちても終わらない。減るのは速度だけ。
+// ============================================================
+const W=400,H=711,HOR=H*0.40,F=430;
+const SEG=11,DRAW=76,FAR=SEG*DRAW,ROADW=11;        // 面数を抑えるため区間は長め
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let scale=1;
+function fit(){
+  const s=Math.min(innerWidth/W,innerHeight/H);scale=s;
+  const dpr=Math.min(devicePixelRatio||1,2);
+  cv.width=W*dpr;cv.height=H*dpr;
+  cv.style.width=W*s+'px';cv.style.height=H*s+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.textBaseline='alphabetic';ctx.lineJoin='round';
+}
+addEventListener('resize',fit);fit();
+
+// ---------- 乱数 ----------
+function rnd(k){let a=(k*2654435761)>>>0;a^=a>>>15;a=Math.imul(a,2246822507);a^=a>>>13;return((a>>>0)%100000)/100000}
+
+// ---------- 道 ----------
+// 直線とコーナーをはっきり分ける。区画ごとに「向き」を決め、その間を滑らかにつなぐ。
+// 曲率のピーク = 1.5*向きの差/コーナー長 で決まるので、「踏まないと曲がれない角」を直接設計できる。
+const BLOCK=520;
+const TH=b=>(rnd(b*17+3)*2-1)*0.70;                // 区画ごとの道の向き（±35度）
+const CPOS=b=>b*BLOCK+70+rnd(b*29+11)*120;         // コーナーの入口
+// コーナー長は「曲率の上限」から逆算する。こうすると大きく曲がる角ほど長くなり、
+// どんな角でも「この速度までなら曲がれる」が保証された設計になる
+const PEAK=z=>0.006*(1+Math.min(0.6,z*0.000012));  // 進むほど角がきつくなる
+function CLEN(z){
+  const b=Math.floor(z/BLOCK),dt=Math.abs(TH(b)-TH(b-1));
+  return Math.max(92+rnd(b*41+7)*100,1.5*dt/PEAK(z));
+}
+function rdx(z){                                    // 道の向き
+  const b=Math.floor(z/BLOCK),a=TH(b-1),c=TH(b);
+  const u=Math.max(0,Math.min(1,(z-CPOS(b))/CLEN(z)));
+  return a+(c-a)*u*u*(3-2*u);
+}
+function rcv(z){                                    // 曲率（＝どれだけ急に向きが変わるか）
+  const b=Math.floor(z/BLOCK),a=TH(b-1),c=TH(b),w=CLEN(z);
+  const u=(z-CPOS(b))/w;
+  if(u<=0||u>=1)return 0;
+  return(c-a)*6*u*(1-u)/w;
+}
+// 道のxは向きの積分。前方へ足しながら伸ばし、後方は捨てる
+const RS=6;
+let X=[0],N0=0;
+function ensure(n){
+  while(N0+X.length-1<n){
+    const idx=N0+X.length;
+    X.push(X[X.length-1]+rdx((idx-0.5)*RS)*RS);
+  }
+  if(X.length>420){const cut=X.length-420;X.splice(0,cut);N0+=cut}
+}
+function rx(z){
+  const n=Math.floor(z/RS);ensure(n+2);
+  const i=n-N0;if(i<0)return X[0];
+  return X[i]+(X[i+1]-X[i])*((z-n*RS)/RS);
+}
+const ry=z=>24*Math.sin(z*0.00051)+38*Math.sin(z*0.00019+0.7);
+
+// ---------- かわいい置物 ----------
+// [色, 高さ, 半幅, 種類]  種類 0:箱 1:プリン 2:円錐 3:きのこ 4:ねこ 5:あひる 6:食パン
+const PAL=['#FFC7DD','#FFE58A','#B8ECD0','#C9D8FF','#FFB4A2','#E5C7FF','#FFF0C9'];
+function propAt(k){
+  const r1=rnd(k*3+11);
+  if(r1>0.42)return null;
+  const r2=rnd(k*7+5),r3=rnd(k*13+3),r4=rnd(k*29+9);
+  const onRoad=r2<0.19&&k>14;                       // 道の上に居座るやつ
+  const side=r3<0.5?-1:1;
+  const type=(r4*7)|0;
+  const sc=onRoad?(0.7+r2*1.2):(1.1+r4*3.4);
+  return{
+    off:onRoad?(r3*2-1)*ROADW*0.62:side*(ROADW+7+r4*46),
+    t:type,s:sc,c:PAL[(r2*PAL.length)|0],on:onRoad,
+    ph:r1*6.28
+  };
+}
+
+// ---------- 音 ----------
+let AC=null,eng=null,engF=null,engG=null,muted=false;
+function audio(){
+  if(AC)return;
+  try{
+    AC=new (window.AudioContext||window.webkitAudioContext)();
+    eng=AC.createOscillator();engF=AC.createBiquadFilter();engG=AC.createGain();
+    eng.type='sawtooth';eng.frequency.value=70;
+    engF.type='lowpass';engF.frequency.value=520;
+    engG.gain.value=0.05;
+    eng.connect(engF);engF.connect(engG);engG.connect(AC.destination);eng.start();
+  }catch(e){}
+}
+function tone(f,d,ty,g){if(muted||!AC)return;try{const o=AC.createOscillator(),v=AC.createGain();
+  o.type=ty||'sine';o.frequency.setValueAtTime(f,AC.currentTime);
+  v.gain.setValueAtTime(0,AC.currentTime);v.gain.linearRampToValueAtTime(g||.1,AC.currentTime+.006);
+  v.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);
+  o.connect(v);v.connect(AC.destination);o.start();o.stop(AC.currentTime+d+.02)}catch(e){}}
+function noise(d,g,f){if(muted||!AC)return;try{const n=AC.sampleRate*d|0,b=AC.createBuffer(1,n,AC.sampleRate),ch=b.getChannelData(0);
+  for(let i=0;i<n;i++)ch[i]=(Math.random()*2-1)*(1-i/n);
+  const s=AC.createBufferSource(),bp=AC.createBiquadFilter(),v=AC.createGain();
+  bp.type='bandpass';bp.frequency.value=f||800;v.gain.value=g||.1;
+  s.buffer=b;s.connect(bp);bp.connect(v);v.connect(AC.destination);s.start()}catch(e){}}
+
+// ---------- 状態 ----------
+// タイヤの限界。1フレームに出せる横加速度の上限で、これが「速いと曲がれない」の正体
+const AMAX=0.024;
+let pz,px,th,v,vmax,steer,steerT,brake,brakeHold,noBrake,best,t0,shake,hitT,auto,idle,air,tilt,pop,dust;
+function reset(){
+  X=[0];N0=0;
+  pz=40;px=0;th=rdx(40);v=0.4;vmax=1.7;steer=0;steerT=0;brake=0;brakeHold=0;
+  noBrake=0;best=0;t0=0;shake=0;hitT=0;auto=true;idle=0;air=0;tilt=0;pop=[];dust=[];
+}
+reset();
+
+// ---------- 入力：左右とブレーキだけ ----------
+const PEDY=H*0.80;
+const pts=new Map();
+function upd(){
+  let st=null,br=false;
+  for(const p of pts.values()){
+    if(p.y>PEDY)br=true;else st=p.x;
+  }
+  if(st!==null){steerT=Math.max(-1,Math.min(1,(st-W/2)/(W*0.33)));auto=false;idle=0}
+  else if(!keys.l&&!keys.r)steerT=auto?steerT:0;
+  brakeHold=br||keys.b?1:0;
+  if(br)auto=false,idle=0;
+}
+const keys={l:0,r:0,b:0};
+cv.addEventListener('pointerdown',e=>{audio();pts.set(e.pointerId,{x:(e.clientX-cv.getBoundingClientRect().left)/scale,y:(e.clientY-cv.getBoundingClientRect().top)/scale});cv.setPointerCapture(e.pointerId);upd()});
+cv.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;const r=cv.getBoundingClientRect();
+  pts.set(e.pointerId,{x:(e.clientX-r.left)/scale,y:(e.clientY-r.top)/scale});upd()});
+const up=e=>{pts.delete(e.pointerId);upd()};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+addEventListener('keydown',e=>{const k=e.key.toLowerCase();
+  if(k==='arrowleft'||k==='a')keys.l=1;if(k==='arrowright'||k==='d')keys.r=1;
+  if(k==='arrowdown'||k==='s'||k===' ')keys.b=1;
+  if(k==='m')muted=!muted;if(k==='r')reset();
+  if(keys.l||keys.r||keys.b){auto=false;idle=0}
+  steerT=keys.l?-1:keys.r?1:steerT;upd()});
+addEventListener('keyup',e=>{const k=e.key.toLowerCase();
+  if(k==='arrowleft'||k==='a')keys.l=0;if(k==='arrowright'||k==='d')keys.r=0;
+  if(k==='arrowdown'||k==='s'||k===' ')keys.b=0;
+  if(!keys.l&&!keys.r)steerT=0;upd()});
+
+// ---------- 自動運転（触るまで勝手に走っている） ----------
+function pilot(){
+  const vz=v*1.55,la=30+vz*15;                       // 速いほど遠くを見る
+  const back=Math.max(-0.4,Math.min(0.4,-px*0.035)); // 中心へ戻る分（外に出るほど強く）
+  let want=rdx(pz+la)+back;
+  // 道の上の置物をよける
+  for(let k=Math.floor(pz/SEG)+1;k<Math.floor(pz/SEG)+8;k++){
+    const p=propAt(k);if(!p||!p.on)continue;
+    const dz=k*SEG-pz;if(dz<6||dz>130)continue;
+    if(Math.abs(p.off-px)<8)want+=(px>p.off?1:-1)*0.16*(1-dz/130);
+  }
+  const dth=AMAX/Math.max(0.7,vz);
+  steerT=Math.max(-1,Math.min(1,(want-th)/(dth*9)));
+  // 曲がりきれない速度なら踏む：必要な曲率 > 出せる曲率
+  let need=0;                                        // 少し先まで見て、一番きつい所に合わせて踏む
+  for(let s=0.4;s<=2.2;s+=0.45)need=Math.max(need,Math.abs(rcv(pz+la*s)));
+  const able=AMAX/(vz*vz);
+  // 路外では踏まない（踏むと戻れなくなる）。踏むのはコーナーが曲がりきれないときだけ
+  brakeHold=(!window.__nb&&Math.abs(px)<ROADW&&need>able*0.85)?1:0;
+}
+
+// ---------- 更新 ----------
+function step(){
+  t0++;idle++;if(idle>170)auto=true;
+  if(auto)pilot();
+
+  vmax=1.7+Math.min(2.6,pz*0.000034);
+  v+=0.014*(1-v/vmax);                             // ぶつかっても数秒で戻る
+  brake+=((brakeHold?1:0)-brake)*0.3;
+  // ブレーキは「遅くする道具」であって「止まる道具」ではない。踏み続けても速度は床で止まる
+  if(brake>0.05){v=Math.max(0.55,v-0.024*brake);if(t0%4===0&&brake>0.5)noise(.07,.035,2600)}
+  const off=Math.max(0,Math.abs(px)-ROADW);
+  if(off>0){                                         // コースアウトはしっかり遅くなる
+    // 少しはみ出しただけでもブレーキより高くつく。深く出るとさらに重い
+    v=Math.max(0.35,v-(0.030+0.045*Math.min(1,off/4)));
+    if(t0%3===0&&v>0.4)noise(.06,.035,300);
+    if(t0%5===0)pop.push({x:px,z:pz-2,l:.55,c:'#EAF2D8'});
+    shake=Math.min(9,shake+v*0.5);
+  }
+  v=Math.max(0.3,v);
+
+  // 操作：ハンドルは「向き」を変える。速いほど向きは変えられない＝タイヤの限界
+  steer+=(steerT-steer)*0.16;
+  const vz=v*1.55;
+  const grip=off>0?0.42:1;
+  th+=steer*(AMAX*grip/Math.max(0.7,vz));
+  const sl=rdx(pz);
+  th=Math.max(sl-0.85,Math.min(sl+0.85,th));         // スピンはしない
+  px+=(th-sl)*vz;                                    // 道の向きとの差だけ横にずれていく
+  pz+=vz;
+  if(Math.abs(px)>ROADW+26){px=Math.sign(px)*(ROADW+26);th=sl-(th-sl)*0.3}
+
+  // ぶつかる（減速するだけ。終わらない）
+  const k0=Math.floor(pz/SEG);
+  for(let k=k0;k<=k0+2;k++){
+    const p=propAt(k);if(!p)continue;
+    const dz=k*SEG-pz;if(dz<-3||dz>6)continue;
+    const r=2.2+p.s*1.5;
+    if(Math.abs(p.off-px)<r&&hitT<=0){
+      v=Math.max(0.62,v*0.68);th+=(px>p.off?1:-1)*0.07;hitT=26;shake=Math.min(16,shake+11);
+      pop.push({x:p.off,z:k*SEG,l:1,c:p.c});
+      noise(.22,.14,260);tone(120,.2,'square',.08);
+      noBrake=0;
+    }
+  }
+  if(hitT>0)hitT--;
+
+  // ノーブレーキ距離＝上手さの置き場所
+  if(brakeHold||off>0)noBrake=0;else noBrake+=v*1.55;
+  if(noBrake>best)best=noBrake;
+
+  // 見た目
+  air=ry(pz)-ry(pz-6);
+  tilt+=((-(vz*vz*rcv(pz))*2.6-(th-sl)*0.22)-tilt)*0.10;   // 実際の横Gで車体と画面が傾く
+  shake*=0.87;
+  pop.forEach(p=>p.l-=0.035);pop=pop.filter(p=>p.l>0);
+  if(AC&&eng){
+    const f=52+v*118+Math.sin(t0*0.4)*2;
+    try{eng.frequency.setTargetAtTime(f,AC.currentTime,0.05);
+      engF.frequency.setTargetAtTime(400+v*900,AC.currentTime,0.08);
+      engG.gain.setTargetAtTime(muted?0:0.035+v*0.02,AC.currentTime,0.1)}catch(e){}
+  }
+}
+
+// ---------- 3D ----------
+let cam={x:0,y:0,z:0,yaw:0,roll:0};
+function setCam(){
+  // 車の真後ろに付くチェイスカメラ。車は常に画面中央に来る
+  const ang=Math.atan(th),back=15;
+  cam.x=(rx(pz)+px)-back*Math.sin(ang);
+  cam.z=pz-back*Math.cos(ang);
+  cam.y=ry(cam.z)+6.6;
+  cam.yaw=ang+(Math.atan(rdx(pz+42))-ang)*0.30;   // 少しだけコーナーの先を覗く
+  cam.roll=-tilt*0.85;
+}
+let CY=1,SY=0,CR=1,SR=0,FOVs=F;
+// ヨーは「視線方向を+Zへ戻す」回転。符号を逆にすると曲がる向きに世界が二重に回る
+function pre(){CY=Math.cos(cam.yaw);SY=Math.sin(cam.yaw);
+  CR=Math.cos(cam.roll);SR=Math.sin(cam.roll);
+  FOVs=F*(1-Math.min(0.17,(v-1)*0.055));}          // 速いほど広角＝加速感
+function prj(x,y,z){
+  const dx=x-cam.x,dy=y-cam.y,dz=z-cam.z;
+  const X=dx*CY-dz*SY, Z=dx*SY+dz*CY;
+  if(Z<2)return null;
+  const sx=X*FOVs/Z, sy=(cam.y-y)*FOVs/Z;
+  return{x:W/2+sx*CR-sy*SR,y:HOR+sx*SR+sy*CR,z:Z};
+}
+// 面バッファ（近クリップ付き。これが無いと坂で足元の地面が消える）
+const NEAR=2.2;
+let FB=[],FN=0;
+function face(pts,col,shade,key){
+  const cs=[];
+  for(const p of pts){
+    const dx=p[0]-cam.x,dy=p[1]-cam.y,dz=p[2]-cam.z;
+    cs.push({X:dx*CY-dz*SY,Y:dy,Z:dx*SY+dz*CY});
+  }
+  const cl=[];
+  for(let i=0;i<cs.length;i++){
+    const a=cs[i],b=cs[(i+1)%cs.length],ai=a.Z>=NEAR,bi=b.Z>=NEAR;
+    if(ai)cl.push(a);
+    if(ai!==bi){const t=(NEAR-a.Z)/(b.Z-a.Z);
+      cl.push({X:a.X+(b.X-a.X)*t,Y:a.Y+(b.Y-a.Y)*t,Z:NEAR})}
+  }
+  if(cl.length<3)return;
+  let sz=0;const o=[];
+  for(const c of cl){
+    const sx=c.X*FOVs/c.Z,sy=-c.Y*FOVs/c.Z;
+    o.push({x:W/2+sx*CR-sy*SR,y:HOR+sx*SR+sy*CR});
+    sz+=c.Z;
+  }
+  sz/=o.length;
+  // 幅の広い面（地面）と狭い面（道）が同じ場所で入れ替わらないよう、深度キーは明示指定を優先
+  const zk=key===undefined?sz:key;
+  if(FN<FB.length)FB[FN].p=o,FB[FN].c=col,FB[FN].s=shade,FB[FN].z=zk,FB[FN].f=sz;
+  else FB.push({p:o,c:col,s:shade,z:zk,f:sz});
+  FN++;
+}
+function hex2rgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
+const SKY=[196,232,255];
+function shadeCol(c,s,z){
+  const a=typeof c==='string'?hex2rgb(c):c;
+  const f=Math.min(1,Math.max(0,(z-60)/(FAR*0.95)));
+  const r=a[0]*s,g=a[1]*s,b=a[2]*s;
+  return'rgb('+(r+(SKY[0]-r)*f|0)+','+(g+(SKY[1]-g)*f|0)+','+(b+(SKY[2]-b)*f|0)+')';
+}
+// 直方体・角錐台
+function solid(x,y,z,w,h,d,top,col,rot,key){
+  const c=Math.cos(rot||0),s=Math.sin(rot||0);
+  const P=(ox,oy,oz)=>[x+ox*c-oz*s,y+oy,z+ox*s+oz*c];
+  const b0=P(-w,0,-d),b1=P(w,0,-d),b2=P(w,0,d),b3=P(-w,0,d);
+  const tw=w*top,td=d*top;
+  const t0_=P(-tw,h,-td),t1=P(tw,h,-td),t2=P(tw,h,td),t3=P(-tw,h,td);
+  const K=key===undefined?undefined:key;           // 奥→手前の順に積む
+  face([b3,b2,t2,t3],col,0.72,K);
+  face([b0,b3,t3,t0_],col,0.82,K);
+  face([b2,b1,t1,t2],col,0.90,K);
+  face([b1,b0,t0_,t1],col,1.0,K);                  // カメラ側が基準色
+  face([t0_,t3,t2,t1],col,1.16,K);                 // 上
+}
+// 置物の形
+function prop(k,p){
+  const z=k*SEG,x=rx(z)+p.off,y=ry(z);
+  const s=p.s,bob=Math.sin(t0*0.045+p.ph)*0.28*s;
+  const yy=y+bob,K=z-cam.z-3*s;                    // 深度キーは物体の一番手前
+  let fx=x,fy=yy,fz=z,fs=s;
+  switch(p.t){
+    case 1: solid(x,yy,z,2.2*s,2.4*s,2.2*s,0.72,p.c,0,K);
+            solid(x,yy+2.4*s,z,1.6*s,0.5*s,1.6*s,0.92,'#C98A5B',0,K-0.01);fy=yy+1.2*s;fz=z-2.2*s;break;
+    case 2: solid(x,yy,z,1.9*s,4.2*s,1.9*s,0.12,'#FFB4A2',0,K);fy=yy+1.4*s;fz=z-1.9*s;break;
+    case 3: solid(x,yy,z,0.8*s,2.4*s,0.8*s,1,'#FFF6E2',0,K);
+            solid(x,yy+2.4*s,z,2.6*s,1.5*s,2.6*s,0.35,'#FF9AAE',0,K-0.01);fy=yy+1.2*s;fz=z-0.8*s;break;
+    case 4: solid(x,yy,z,1.9*s,1.7*s,2.6*s,1,p.c,0,K);
+            solid(x,yy+1.7*s,z-0.9*s,1.5*s,1.5*s,1.3*s,1,p.c,0,K-0.02);
+            solid(x-0.9*s,yy+3.2*s,z-1.1*s,0.35*s,0.8*s,0.35*s,0.1,p.c,0,K-0.03);
+            solid(x+0.9*s,yy+3.2*s,z-1.1*s,0.35*s,0.8*s,0.35*s,0.1,p.c,0,K-0.03);
+            fy=yy+2.4*s;fz=z-2.2*s;break;
+    case 5: solid(x,yy,z,2.1*s,1.9*s,2.7*s,1,'#FFE58A',0,K);
+            solid(x,yy+1.9*s,z-1.1*s,1.2*s,1.4*s,1.2*s,1,'#FFE58A',0,K-0.02);
+            solid(x,yy+2.5*s,z-2.4*s,0.6*s,0.5*s,0.7*s,1,'#FF9E3D',0,K-0.03);
+            fy=yy+2.6*s;fz=z-2.3*s;break;
+    case 6: solid(x,yy,z,2.4*s,3.0*s,1.0*s,1,'#FFE9BC',0,K);
+            solid(x,yy+3.0*s,z,1.7*s,0.9*s,0.9*s,0.6,'#FFE9BC',0,K-0.01);fy=yy+1.6*s;fz=z-1.0*s;break;
+    default:solid(x,yy,z,2.0*s,2.6*s,2.0*s,1,p.c,0,K);fy=yy+1.5*s;fz=z-2.0*s;
+  }
+  return{x:fx,y:fy,z:fz,s:fs};
+}
+
+// ---------- 自機 ----------
+function car(){
+  const z=pz,x=rx(z)+px,y=ry(z);
+  const sq=1+Math.sin(t0*0.09)*0.03+(hitT>0?0.18:0);
+  const rot=-(th-rdx(z))*1.05-steer*0.05,K=z-cam.z-2.7;   // 深度キーは車体の一番手前
+
+  const c=Math.cos(rot),s=Math.sin(rot);
+  for(const w of [[-1.5,-1.6],[1.5,-1.6],[-1.5,1.6],[1.5,1.6]])
+    solid(x+w[0]*c-w[1]*s,y,z+w[0]*s+w[1]*c,0.45,0.75,0.75,1,'#5D5470',0,K+0.02);
+  solid(x,y+0.35,z,1.5,1.15*sq,2.5,1,'#FF8FB1',rot,K);
+  solid(x,y+1.5*sq,z-0.15,1.15,0.95*sq,1.35,0.9,'#FFD1E0',rot,K-0.01);
+  return{x,y:y+1.72*sq,z:z-2.55};                  // 後ろの窓に顔がある
+}
+
+// ---------- 顔 ----------
+function facePaint(f,blink,mouth,ws){
+  const q=prj(f.x,f.y,f.z);if(!q)return;
+  const k=FOVs/q.z;                                  // ワールド単位→画面px
+  const ex=ws*k,ey=ws*1.15*k,r=Math.max(0.7,ws*0.34*k);
+  if(q.x<-120||q.x>W+120||q.y<-80||q.y>H+80)return;
+  ctx.save();
+  ctx.translate(q.x,q.y);ctx.rotate(cam.roll);
+  ctx.fillStyle='#3A3350';
+  if(blink){ctx.lineWidth=Math.max(1,r*0.5);ctx.strokeStyle='#3A3350';
+    ctx.beginPath();ctx.moveTo(-ex-r,0);ctx.lineTo(-ex+r,0);ctx.moveTo(ex-r,0);ctx.lineTo(ex+r,0);ctx.stroke();}
+  else{ctx.beginPath();ctx.arc(-ex,0,r,0,6.29);ctx.arc(ex,0,r,0,6.29);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.9)';
+    ctx.beginPath();ctx.arc(-ex+r*0.3,-r*0.3,r*0.3,0,6.29);ctx.arc(ex+r*0.3,-r*0.3,r*0.3,0,6.29);ctx.fill();}
+  ctx.fillStyle='#3A3350';
+  if(mouth>0.5){ctx.beginPath();ctx.ellipse(0,ey*0.55,r*0.85,r*1.15,0,0,6.29);ctx.fill()}
+  else{ctx.lineWidth=Math.max(0.8,r*0.42);ctx.strokeStyle='#3A3350';
+    ctx.beginPath();ctx.arc(0,ey*0.1,r*1.15,0.35,Math.PI-0.35);ctx.stroke()}
+  ctx.restore();
+}
+
+// ---------- 描画 ----------
+function draw(){
+  setCam();pre();
+  // 空
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#9FD9FF');g.addColorStop(0.42,'#C9EBFF');g.addColorStop(0.62,'#FFE7F0');g.addColorStop(1,'#FFF3E2');
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  // おひさま
+  const sunx=W*0.5-cam.yaw*420,suny=HOR-118+ry(pz)*0.4;
+  ctx.fillStyle='#FFF2A8';ctx.beginPath();ctx.arc(sunx,suny,44,0,6.29);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.55)';ctx.beginPath();ctx.arc(sunx,suny,30,0,6.29);ctx.fill();
+  // くも
+  for(let i=0;i<7;i++){
+    const cx=((i*151+t0*0.12)%(W+340))-170-cam.yaw*(160+i*40);
+    const cy2=HOR-190+((i*67)%110)+ry(pz)*0.25;
+    ctx.fillStyle='rgba(255,255,255,'+(0.5+(i%3)*0.16)+')';
+    ctx.beginPath();
+    ctx.arc(cx,cy2,17+(i%3)*7,0,6.29);ctx.arc(cx+20,cy2+4,13+(i%2)*6,0,6.29);ctx.arc(cx-19,cy2+5,12,0,6.29);
+    ctx.fill();
+  }
+  ctx.save();
+  ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+
+  FN=0;
+  const k0=Math.floor(pz/SEG)-2;
+  const faces=[];
+  // 地面と道
+  for(let i=DRAW;i>=0;i--){
+    const k=k0+i,z1=k*SEG,z2=z1+SEG;
+    const x1=rx(z1),x2=rx(z2),y1=ry(z1),y2=ry(z2);
+    // 地形は区間の「一番奥」を深度キーにする。こうすると区間の上に立つ物より必ず先に塗られ、
+    // 車や置物の足元が地面に食われない
+    const K=z2-cam.z;
+    const gcol=(k&1)?'#A9E4A3':'#9EDC98';
+    face([[x1-220,y1,z1],[x1+220,y1,z1],[x2+220,y2,z2],[x2-220,y2,z2]],gcol,1,K);
+    const rc=(k&1)?'#CFC9DE':'#C6C0D6';
+    face([[x1-ROADW,y1+0.05,z1],[x1+ROADW,y1+0.05,z1],[x2+ROADW,y2+0.05,z2],[x2-ROADW,y2+0.05,z2]],rc,1,K);
+    // 縁石
+    const ec=(k&1)?'#FF9EB7':'#FFF6E2';
+    face([[x1-ROADW-1.6,y1+0.08,z1],[x1-ROADW,y1+0.08,z1],[x2-ROADW,y2+0.08,z2],[x2-ROADW-1.6,y2+0.08,z2]],ec,1,K);
+    face([[x1+ROADW,y1+0.08,z1],[x1+ROADW+1.6,y1+0.08,z1],[x2+ROADW+1.6,y2+0.08,z2],[x2+ROADW,y2+0.08,z2]],ec,1,K);
+    // センターライン
+    if(k&1)face([[x1-0.55,y1+0.1,z1],[x1+0.55,y1+0.1,z1],[x2+0.55,y2+0.1,z2],[x2-0.55,y2+0.1,z2]],'#FFFDF5',1,K);
+  }
+  // 置物
+  const heads=[];
+  for(let i=DRAW;i>=1;i--){
+    const k=k0+i,p=propAt(k);if(!p)continue;
+    const dz=k*SEG-pz;if(dz<-6||dz>FAR)continue;
+    heads.push(prop(k,p));
+  }
+  const me=car();
+
+  // 奥から手前へ
+  const list=FB.slice(0,FN);
+  list.sort((a,b)=>b.z-a.z);
+  for(const f of list){
+    ctx.fillStyle=shadeCol(f.c,f.s,f.f);
+    ctx.beginPath();ctx.moveTo(f.p[0].x,f.p[0].y);
+    for(let i=1;i<f.p.length;i++)ctx.lineTo(f.p[i].x,f.p[i].y);
+    ctx.closePath();ctx.fill();
+  }
+  // 顔（3Dの上に貼る）
+  const bl=(t0%200)<7;
+  for(const h of heads)facePaint(h,bl,0,0.62*h.s);
+  facePaint(me,hitT>0,v>vmax*0.86?1:0,0.44);
+
+  // ぶつかった煙
+  for(const p of pop){
+    const q=prj(rx(p.z)+p.x,ry(p.z)+2,p.z);if(!q)continue;
+    ctx.globalAlpha=p.l*0.8;ctx.fillStyle='#FFFFFF';
+    for(let i=0;i<5;i++){const a=i*1.25+t0*0.05,r=(1-p.l)*46*FOVs/q.z*0.6+4;
+      ctx.beginPath();ctx.arc(q.x+Math.cos(a)*r*1.4,q.y+Math.sin(a)*r,r*0.55+2,0,6.29);ctx.fill()}
+    ctx.globalAlpha=1;
+  }
+  // 速度線
+  const ex2=Math.max(0,v-1.35);
+  if(ex2>0.02){
+    ctx.strokeStyle='rgba(255,255,255,'+Math.min(.5,ex2*0.5)+')';ctx.lineWidth=2.4;
+    for(let i=0;i<16;i++){
+      const a=(i*137.5+t0*7)%360*Math.PI/180,r0=140+((i*53)%120);
+      const r1=r0+40+ex2*130;
+      ctx.beginPath();
+      ctx.moveTo(W/2+Math.cos(a)*r0,HOR+Math.sin(a)*r0);
+      ctx.lineTo(W/2+Math.cos(a)*r1,HOR+Math.sin(a)*r1);ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // ---------- HUD（数字だけ） ----------
+  const kmh=Math.round(v*216);
+  ctx.textAlign='center';
+  ctx.fillStyle='#FFFFFF';ctx.strokeStyle='rgba(90,70,110,.85)';ctx.lineWidth=5;
+  ctx.font='800 62px ui-monospace,"SFMono-Regular",monospace';
+  ctx.strokeText(kmh,W/2,74);ctx.fillText(kmh,W/2,74);
+  ctx.font='700 14px ui-monospace,monospace';ctx.lineWidth=3.5;
+  ctx.strokeText((pz/1000).toFixed(2),W/2,96);ctx.fillStyle='rgba(255,255,255,.92)';ctx.fillText((pz/1000).toFixed(2),W/2,96);
+  ctx.textAlign='left';
+  // ノーブレーキ距離
+  const nb=Math.round(noBrake);
+  ctx.textAlign='right';
+  ctx.font='700 20px ui-monospace,monospace';ctx.lineWidth=4;
+  ctx.strokeStyle='rgba(90,70,110,.8)';ctx.fillStyle=noBrake>best*0.92&&noBrake>200?'#FFE066':'#FFFFFF';
+  ctx.strokeText(nb,W-14,36);ctx.fillText(nb,W-14,36);
+  ctx.textAlign='left';
+  ctx.font='700 13px ui-monospace,monospace';ctx.lineWidth=3;
+  ctx.strokeStyle='rgba(90,70,110,.8)';ctx.fillStyle='rgba(255,255,255,.85)';
+  ctx.strokeText(Math.round(best),14,36);ctx.fillText(Math.round(best),14,36);
+
+  // ブレーキペダル
+  const bh=H-PEDY;
+  ctx.save();
+  const pr=8+brake*4;
+  ctx.translate(0,brake*5);
+  ctx.fillStyle='rgba(255,255,255,'+(0.30+brake*0.45)+')';
+  ctx.beginPath();
+  ctx.moveTo(W*0.5-96,PEDY+16);ctx.lineTo(W*0.5+96,PEDY+16);
+  ctx.lineTo(W*0.5+82,H-14);ctx.lineTo(W*0.5-82,H-14);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,'+(0.6+brake*0.4)+')';ctx.lineWidth=3;ctx.stroke();
+  // 中の模様（踏むと縮む）
+  ctx.fillStyle='rgba(120,90,140,'+(0.35+brake*0.4)+')';
+  for(let i=-1;i<=1;i++){
+    ctx.beginPath();ctx.roundRect?ctx.roundRect(W*0.5+i*40-13,PEDY+30-brake*3,26,H-PEDY-52,6):
+      ctx.rect(W*0.5+i*40-13,PEDY+30-brake*3,26,H-PEDY-52);
+    ctx.fill();
+  }
+  ctx.restore();
+  if(auto&&t0%120<60){                       // 触るまでペダルがふわっと光る
+    ctx.strokeStyle='rgba(255,255,255,'+(0.25+0.25*Math.sin(t0*0.09))+')';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(W*0.5-96,PEDY+16);ctx.lineTo(W*0.5+96,PEDY+16);
+    ctx.lineTo(W*0.5+82,H-14);ctx.lineTo(W*0.5-82,H-14);ctx.closePath();ctx.stroke();
+  }
+}
+
+// 調整用
+window.__d=()=>({t0,pz:pz|0,v:+v.toFixed(3),kmh:Math.round(v*216),px:+px.toFixed(1),
+  br:brakeHold?1:0,slope:+rdx(pz).toFixed(2),best:best|0,fn:FN,
+  th:+th.toFixed(2),carX:+(rx(pz)+px).toFixed(1),camX:+cam.x.toFixed(1),camZ:+cam.z.toFixed(1),
+  yaw:+cam.yaw.toFixed(2),rxpz:+rx(pz).toFixed(1),N0:N0,XL:X.length,idx:Math.floor(pz/RS)});
+window.__probe=()=>{setCam();pre();
+  const q=prj(rx(pz)+px,ry(pz)+1.7,pz);
+  const r=prj(rx(pz+60),ry(pz+60),pz+60);
+  return{car:q?[q.x|0,q.y|0,q.z|0]:null,road60:r?[r.x|0,r.y|0]:null,
+    yaw:+cam.yaw.toFixed(3),camX:+cam.x.toFixed(1),camZ:+cam.z.toFixed(1),
+    carX:+(rx(pz)+px).toFixed(1),pz:pz|0,px:+px.toFixed(1),th:+th.toFixed(2)}};
+window.__sim=n=>{for(let i=0;i<n;i++)step();return window.__d()};
+
+let acc=0,last=performance.now();
+function loop(now){
+  let dt=now-last;last=now;if(dt>100)dt=100;acc+=dt;
+  let n=0;while(acc>=1000/60&&n<4){step();acc-=1000/60;n++}
+  if(acc>1000/60)acc=0;
+  draw();requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
