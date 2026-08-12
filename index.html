@@ -4,478 +4,521 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>光跡 — HIKARI TRAIL</title>
+<title>粒子場 — RYUSHI FIELD</title>
 <style>
   :root{
-    --ink: #eaf6f4;
-    --dim: rgba(234,246,244,.45);
-    --line: rgba(234,246,244,.16);
-    --glow: #7fe8e0;
-    --panel: rgba(6,10,12,.62);
+    --ink:#e8f2ff; --dim:rgba(232,242,255,.45); --line:rgba(232,242,255,.15);
+    --glow:#8fb6ff; --panel:rgba(6,8,14,.6);
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;height:100%;background:#000;overflow:hidden;}
-  body{
-    font-family: "Hiragino Sans","Noto Sans JP","Helvetica Neue",system-ui,sans-serif;
-    color:var(--ink);
-    touch-action:manipulation;
-  }
-  canvas{display:block;width:100%;height:100%;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  body{font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;color:var(--ink);touch-action:manipulation}
+  canvas{display:block;width:100%;height:100%}
 
-  /* ---- start gate ---- */
-  #gate{
-    position:fixed; inset:0; z-index:20;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:28px; padding:32px; text-align:center;
-    background:radial-gradient(120% 90% at 50% 40%, #06171a 0%, #000 70%);
-  }
-  #gate h1{
-    margin:0; font-size:13px; font-weight:400;
-    letter-spacing:.62em; text-indent:.62em; color:var(--dim);
-  }
-  #gate .jp{
-    margin:0; font-size:34px; font-weight:200; letter-spacing:.34em; text-indent:.34em;
-    color:var(--ink);
-  }
-  #startBtn{
-    appearance:none; border:1px solid var(--line); background:transparent;
-    color:var(--ink); font:inherit; font-size:14px; letter-spacing:.3em; text-indent:.3em;
-    padding:18px 34px; border-radius:999px; cursor:pointer;
-    transition:border-color .3s, box-shadow .3s, color .3s;
-  }
-  #startBtn:hover,#startBtn:focus-visible{
-    border-color:var(--glow); color:var(--glow);
-    box-shadow:0 0 34px -8px var(--glow); outline:none;
-  }
-  #gate .note{
-    margin:0; max-width:30em; font-size:11.5px; line-height:2; color:var(--dim);
-  }
-  #err{
-    display:none; max-width:30em; font-size:12px; line-height:1.9;
-    border-top:1px solid var(--line); padding-top:18px; color:#ffb4a8;
-  }
+  #gate{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:26px;padding:32px;text-align:center;
+    background:radial-gradient(120% 90% at 50% 40%,#0a1020 0%,#000 72%)}
+  #gate h1{margin:0;font-size:12px;font-weight:400;letter-spacing:.6em;text-indent:.6em;color:var(--dim)}
+  #gate .jp{margin:0;font-size:32px;font-weight:200;letter-spacing:.34em;text-indent:.34em}
+  #startBtn{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);
+    font:inherit;font-size:14px;letter-spacing:.3em;text-indent:.3em;padding:18px 34px;border-radius:999px;
+    cursor:pointer;transition:.3s}
+  #startBtn:hover,#startBtn:focus-visible{border-color:var(--glow);color:var(--glow);
+    box-shadow:0 0 34px -8px var(--glow);outline:none}
+  #gate .note{margin:0;max-width:30em;font-size:11.5px;line-height:2;color:var(--dim)}
+  #status{font-size:11px;letter-spacing:.16em;color:var(--dim);min-height:1.4em}
+  #err{display:none;max-width:30em;font-size:12px;line-height:1.9;border-top:1px solid var(--line);
+    padding-top:16px;color:#ffb0a4}
 
-  /* ---- controls ---- */
-  #ui{
-    position:fixed; left:0; right:0; bottom:0; z-index:10;
+  #ui{position:fixed;left:0;right:0;bottom:0;z-index:10;
     padding:14px 16px calc(14px + env(safe-area-inset-bottom));
-    display:none; gap:10px; flex-direction:column;
-    background:linear-gradient(to top, rgba(0,0,0,.72), transparent);
-    transition:opacity .5s; opacity:1;
-  }
-  #ui.hidden{opacity:0; pointer-events:none;}
-  .row{display:flex; align-items:center; gap:12px;}
-  .row label{
-    font-size:10px; letter-spacing:.18em; color:var(--dim);
-    width:3.6em; flex:none;
-  }
-  input[type=range]{
-    -webkit-appearance:none; appearance:none; flex:1; height:22px; background:transparent;
-  }
-  input[type=range]::-webkit-slider-runnable-track{height:1px; background:var(--line);}
-  input[type=range]::-moz-range-track{height:1px; background:var(--line);}
-  input[type=range]::-webkit-slider-thumb{
-    -webkit-appearance:none; width:14px; height:14px; margin-top:-6.5px;
-    border-radius:50%; background:var(--glow); box-shadow:0 0 12px -2px var(--glow);
-  }
-  input[type=range]::-moz-range-thumb{
-    width:14px;height:14px;border:none;border-radius:50%;background:var(--glow);
-  }
-  .btns{display:flex; gap:8px; justify-content:space-between;}
-  .btns button{
-    flex:1; appearance:none; background:var(--panel); border:1px solid var(--line);
-    color:var(--dim); font:inherit; font-size:10.5px; letter-spacing:.16em;
-    padding:11px 4px; border-radius:8px; cursor:pointer;
-    backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
-  }
-  .btns button.on{color:#04100f; background:var(--glow); border-color:var(--glow);}
-  .btns button:focus-visible{outline:1px solid var(--glow); outline-offset:2px;}
-  #hint{
-    position:fixed; top:calc(14px + env(safe-area-inset-top)); left:0; right:0; z-index:10;
-    text-align:center; font-size:10px; letter-spacing:.2em; color:var(--dim);
-    pointer-events:none; transition:opacity 1s;
-  }
-  @media (prefers-reduced-motion: reduce){
-    #ui,#hint{transition:none;}
-  }
+    display:none;gap:9px;flex-direction:column;
+    background:linear-gradient(to top,rgba(0,0,0,.75),transparent);transition:opacity .5s}
+  #ui.hidden{opacity:0;pointer-events:none}
+  .row{display:flex;align-items:center;gap:12px}
+  .row label{font-size:10px;letter-spacing:.16em;color:var(--dim);width:3.4em;flex:none}
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:22px;background:transparent}
+  input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--line)}
+  input[type=range]::-moz-range-track{height:1px;background:var(--line)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-6.5px;
+    border-radius:50%;background:var(--glow);box-shadow:0 0 12px -2px var(--glow)}
+  input[type=range]::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--glow)}
+  .btns{display:flex;gap:7px}
+  .btns button{flex:1;appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--dim);
+    font:inherit;font-size:10px;letter-spacing:.1em;padding:11px 2px;border-radius:8px;cursor:pointer;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  .btns button.on{color:#050a14;background:var(--glow);border-color:var(--glow)}
+  .btns button:focus-visible{outline:1px solid var(--glow);outline-offset:2px}
+  #fps{position:fixed;top:calc(10px + env(safe-area-inset-top));right:14px;z-index:10;font-size:10px;
+    letter-spacing:.1em;color:rgba(232,242,255,.3);pointer-events:none}
 </style>
 </head>
 <body>
 
 <div id="gate">
-  <h1>HIKARI TRAIL</h1>
-  <p class="jp">光跡</p>
-  <button id="startBtn">カメラをはじめる</button>
-  <p class="note">インカメラの前で手を動かすと、動いた跡から光が湧き上がります。映像は端末の外に出ません。</p>
+  <h1>RYUSHI FIELD</h1>
+  <p class="jp">粒子場</p>
+  <button id="startBtn">はじめる</button>
+  <p id="status"></p>
+  <p class="note">画面いっぱいの粒がゆっくり漂っています。体を近づけると粒が押しのけられ、動かした場所から噴き出します。映像は端末の外に出ません。</p>
   <p id="err"></p>
 </div>
 
-<div id="hint">画面をタップで操作パネル</div>
+<div id="fps"></div>
 
 <div id="ui">
-  <div class="row"><label>感度</label><input id="sens" type="range" min="0.004" max="0.12" step="0.001" value="0.028"></div>
-  <div class="row"><label>残像</label><input id="decay" type="range" min="0.90" max="0.995" step="0.001" value="0.968"></div>
-  <div class="row"><label>上昇</label><input id="rise" type="range" min="0" max="2.5" step="0.05" value="0.9"></div>
+  <div class="row"><label>密度</label><input id="count" type="range" min="3000" max="40000" step="1000" value="16000"></div>
+  <div class="row"><label>反発</label><input id="repel" type="range" min="0" max="0.02" step="0.0005" value="0.0065"></div>
+  <div class="row"><label>噴出</label><input id="gush"  type="range" min="0" max="0.05" step="0.001" value="0.016"></div>
+  <div class="row"><label>流れ</label><input id="flow"  type="range" min="0" max="0.06" step="0.001" value="0.018"></div>
+  <div class="row"><label>残像</label><input id="fade"  type="range" min="0.03" max="0.6" step="0.01" value="0.18"></div>
   <div class="btns">
-    <button id="camBtn">カメラ切替</button>
-    <button id="modeBtn">検出を見る</button>
-    <button id="clearBtn">消去</button>
+    <button id="camBtn">カメラ</button>
+    <button id="maskBtn">判定を見る</button>
+    <button id="invBtn">反転</button>
     <button id="fsBtn">全画面</button>
   </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-(function(){
+<script type="module">
 "use strict";
 
-var gate=document.getElementById('gate'),
-    errEl=document.getElementById('err'),
-    ui=document.getElementById('ui'),
-    hint=document.getElementById('hint');
+/* =========================================================================
+   構成
+   1. MediaPipe Image Segmenter が人物シルエットを毎フレーム返す（256x256程度）
+   2. それを粗いグリッド(GW x GH)に落として数回ぼかす → occupancy field
+   3. 粒子は CPU で更新。field の勾配で押し出され、field の時間差分で噴き出す
+   4. THREE.Points に加算合成で描画。背景は黒を薄く重ねて残像にする
+   ========================================================================= */
 
-var video=document.createElement('video');
+const $ = id => document.getElementById(id);
+const gate=$('gate'), errEl=$('err'), statusEl=$('status'), ui=$('ui'), fpsEl=$('fps');
+
+/* ---------- state ---------- */
+let renderer, cam, scene, fadeScene, maskScene;
+let points, geo, posAttr, colAttr, sizeAttr, fadeMat;
+let maskTex, maskTexData, maskMesh;
+
+const video = document.createElement('video');
 video.setAttribute('playsinline','');
 video.setAttribute('webkit-playsinline','');
-video.muted=true; video.autoplay=true; video.playsInline=true;
+video.muted = true; video.autoplay = true; video.playsInline = true;
 
-var renderer,scene,camOrtho,quad;
-var videoTex,prevRT,trailA,trailB,copyMat,trailMat,showMat;
-var facing='user', stream=null, running=false, started=false;
-var mode=0; // 0 = light, 1 = detection mask
-var clock=null, t0=0;
+let stream=null, facing='user', segmenter=null, useFallback=false;
+let running=false, started=false, showMask=false, invert=false;
 
-/* ---------- shaders ---------- */
-var VERT = [
-'varying vec2 vUv;',
-'void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }'
-].join('\n');
+// occupancy grid
+let GW=0, GH=0, gridAspect=1;
+let gField=null, gTmp=null, gPrev=null, gDelta=null;
+let fbCanvas=null, fbCtx=null, fbPrev=null;   // fallback frame-diff path
 
-// copies the live frame into a buffer so the next frame has something to compare against
-var COPY_FRAG = [
-'varying vec2 vUv;',
-'uniform sampler2D uTex;',
-'uniform vec2 uScale;',
-'uniform float uMirror;',
-'void main(){',
-'  vec2 uv = vUv;',
-'  uv.x = mix(uv.x, 1.0 - uv.x, uMirror);',
-'  uv = (uv - 0.5) * uScale + 0.5;',
-'  gl_FragColor = vec4(texture2D(uTex, uv).rgb, 1.0);',
-'}'
-].join('\n');
+// particles
+let N=0, MAXN=40000;
+let px,py,vx,vy,pb,ph;
+const params = { repel:0.0065, gush:0.016, flow:0.018, fade:0.18 };
 
-var TRAIL_FRAG = [
-'varying vec2 vUv;',
-'uniform sampler2D uCur;',   // live video
-'uniform sampler2D uPrev;',  // previous frame
-'uniform sampler2D uTrail;', // accumulation buffer
-'uniform vec2  uTexel;',
-'uniform vec2  uScale;',
-'uniform float uMirror;',
-'uniform float uSens;',
-'uniform float uDecay;',
-'uniform float uRise;',
-'uniform float uTime;',
-'',
-'float lum(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }',
-'',
-'vec3 palette(float k){',
-'  return 0.55 + 0.45 * cos(6.28318 * (vec3(0.62, 0.48, 0.36) + k));',
-'}',
-'',
-'void main(){',
-'  vec2 uv = vUv;',
-'',
-// advect the existing light upward, with a slow lateral sway so it does not look like a wipe
-'  float sway = sin(uv.y * 9.0 + uTime * 0.6) * 0.18;',
-'  vec2 flow  = vec2(sway * uTexel.x * uRise, -uTexel.y * uRise);',
-'  vec2 suv   = uv + flow;',
-'',
-// 5-tap blur while advecting = free glow, and it spreads a little more each frame
-'  vec3 t  = texture2D(uTrail, suv).rgb * 0.42;',
-'  t += texture2D(uTrail, suv + vec2( uTexel.x, 0.0)).rgb * 0.145;',
-'  t += texture2D(uTrail, suv + vec2(-uTexel.x, 0.0)).rgb * 0.145;',
-'  t += texture2D(uTrail, suv + vec2(0.0,  uTexel.y)).rgb * 0.145;',
-'  t += texture2D(uTrail, suv + vec2(0.0, -uTexel.y)).rgb * 0.145;',
-'  t *= uDecay;',
-'',
-// frame difference on the mirrored, cover-fitted video
-'  vec2 cuv = uv;',
-'  cuv.x = mix(cuv.x, 1.0 - cuv.x, uMirror);',
-'  cuv = (cuv - 0.5) * uScale + 0.5;',
-'  vec3 cur = texture2D(uCur,  cuv).rgb;',
-'  vec3 pre = texture2D(uPrev, uv).rgb;',
-'  float d  = abs(lum(cur) - lum(pre));',
-'  float m  = smoothstep(uSens, uSens * 2.6, d);',
-'',
-// colour the new spark by where it was born, so different parts of the body read differently
-'  float k = uv.y * 0.35 + uv.x * 0.12 + uTime * 0.013;',
-'  vec3 spark = palette(k) * m;',
-'  spark += vec3(m * m * 0.55);',   // hot white core on fast motion
-'',
-'  vec3 outc = t + spark * 0.85;',
-'  gl_FragColor = vec4(min(outc, vec3(4.0)), m);',
-'}'
-].join('\n');
+// video -> screen cover transform
+let coverX=1, coverY=1, mirror=1;
 
-var SHOW_FRAG = [
-'varying vec2 vUv;',
-'uniform sampler2D uTrail;',
-'uniform vec2  uTexel;',
-'uniform float uMode;',
-'void main(){',
-'  vec4 s = texture2D(uTrail, vUv);',
-'  if(uMode > 0.5){',
-'    float m = s.a;',
-'    gl_FragColor = vec4(vec3(m) * vec3(0.55, 1.0, 0.95), 1.0);',
-'    return;',
-'  }',
-'  vec3 c = s.rgb;',
-// wide taps for bloom halo
-'  vec3 b = vec3(0.0);',
-'  b += texture2D(uTrail, vUv + vec2( uTexel.x * 3.0, 0.0)).rgb;',
-'  b += texture2D(uTrail, vUv + vec2(-uTexel.x * 3.0, 0.0)).rgb;',
-'  b += texture2D(uTrail, vUv + vec2(0.0,  uTexel.y * 3.0)).rgb;',
-'  b += texture2D(uTrail, vUv + vec2(0.0, -uTexel.y * 3.0)).rgb;',
-'  c += b * 0.11;',
-'  c = c / (1.0 + c * 0.55);',        // soft rolloff so highlights bloom instead of clipping
-'  c = pow(max(c, 0.0), vec3(0.82));',
-'  float v = 1.0 - length(vUv - 0.5) * 0.55;',
-'  gl_FragColor = vec4(c * v, 1.0);',
-'}'
-].join('\n');
-
-/* ---------- setup ---------- */
-function makeRT(w,h){
-  var type = THREE.HalfFloatType;
-  try{
-    var ext = renderer.getContext().getExtension('OES_texture_half_float');
-    if(!renderer.capabilities.isWebGL2 && !ext) type = THREE.UnsignedByteType;
-  }catch(e){ type = THREE.UnsignedByteType; }
-  return new THREE.WebGLRenderTarget(w,h,{
-    minFilter:THREE.LinearFilter, magFilter:THREE.LinearFilter,
-    format:THREE.RGBAFormat, type:type, depthBuffer:false, stencilBuffer:false,
-    wrapS:THREE.ClampToEdgeWrapping, wrapT:THREE.ClampToEdgeWrapping
-  });
-}
-
-function init(){
-  renderer=new THREE.WebGLRenderer({antialias:false, alpha:false, powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.autoClear=false;
-  document.body.appendChild(renderer.domElement);
-
-  scene=new THREE.Scene();
-  camOrtho=new THREE.OrthographicCamera(-1,1,1,-1,0,1);
-
-  videoTex=new THREE.VideoTexture(video);
-  videoTex.minFilter=THREE.LinearFilter;
-  videoTex.magFilter=THREE.LinearFilter;
-  videoTex.format=THREE.RGBFormat;
-
-  copyMat=new THREE.ShaderMaterial({
-    vertexShader:VERT, fragmentShader:COPY_FRAG,
-    uniforms:{uTex:{value:videoTex},uScale:{value:new THREE.Vector2(1,1)},uMirror:{value:1}},
-    depthTest:false, depthWrite:false
-  });
-  trailMat=new THREE.ShaderMaterial({
-    vertexShader:VERT, fragmentShader:TRAIL_FRAG,
-    uniforms:{
-      uCur:{value:videoTex}, uPrev:{value:null}, uTrail:{value:null},
-      uTexel:{value:new THREE.Vector2(1/256,1/256)},
-      uScale:{value:new THREE.Vector2(1,1)},
-      uMirror:{value:1},
-      uSens:{value:0.028}, uDecay:{value:0.968}, uRise:{value:0.9}, uTime:{value:0}
+/* ---------- segmentation ---------- */
+async function loadSegmenter(){
+  statusEl.textContent = 'モデルを読み込み中…';
+  const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18");
+  const files = await vision.FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
+  );
+  segmenter = await vision.ImageSegmenter.createFromOptions(files, {
+    baseOptions:{
+      modelAssetPath:"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
+      delegate:"GPU"
     },
-    depthTest:false, depthWrite:false
+    runningMode:"VIDEO",
+    outputCategoryMask:false,
+    outputConfidenceMasks:true
   });
-  showMat=new THREE.ShaderMaterial({
-    vertexShader:VERT, fragmentShader:SHOW_FRAG,
-    uniforms:{uTrail:{value:null},uTexel:{value:new THREE.Vector2(1/256,1/256)},uMode:{value:0}},
-    depthTest:false, depthWrite:false
+  statusEl.textContent = '';
+}
+
+/* ---------- grid ---------- */
+function ensureGrid(srcW, srcH){
+  const targetW = 112;
+  const w = targetW;
+  const h = Math.max(24, Math.round(targetW * srcH / srcW));
+  if(w===GW && h===GH) return;
+  GW=w; GH=h; gridAspect = srcW/srcH;
+  const n=GW*GH;
+  gField=new Float32Array(n); gTmp=new Float32Array(n);
+  gPrev=new Float32Array(n);  gDelta=new Float32Array(n);
+  maskTexData=new Uint8Array(n);
+  if(maskTex) maskTex.dispose();
+  maskTex=new THREE.DataTexture(maskTexData,GW,GH,THREE.LuminanceFormat,THREE.UnsignedByteType);
+  maskTex.minFilter=maskTex.magFilter=THREE.LinearFilter;
+  maskTex.needsUpdate=true;
+  if(maskMesh) maskMesh.material.map=maskTex;
+  updateCover();
+}
+
+// resample an incoming mask (any resolution) into the working grid
+function ingest(src, sw, sh){
+  ensureGrid(sw, sh);
+  for(let y=0;y<GH;y++){
+    const sy = Math.min(sh-1, (y*sh/GH)|0);
+    const ro = sy*sw, wo = y*GW;
+    for(let x=0;x<GW;x++){
+      const sx = Math.min(sw-1, (x*sw/GW)|0);
+      gTmp[wo+x] = src[ro+sx];
+    }
+  }
+  // auto-orient: the frame border is almost always background
+  let border=0,bn=0,center=0,cn=0;
+  for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){
+    const v=gTmp[y*GW+x];
+    if(x<3||y<3||x>GW-4||y>GH-4){border+=v;bn++;}
+    else if(x>GW*0.35&&x<GW*0.65&&y>GH*0.35&&y<GH*0.65){center+=v;cn++;}
+  }
+  const flip = (bn&&cn&&(border/bn) > (center/cn)+0.15) !== invert;
+
+  gPrev.set(gField);
+  for(let i=0;i<GW*GH;i++) gField[i] = flip ? 1-gTmp[i] : gTmp[i];
+  blur(gField,3);
+  for(let i=0;i<GW*GH;i++){
+    const d = Math.abs(gField[i]-gPrev[i]);
+    gDelta[i] = Math.max(gDelta[i]*0.72, d);
+  }
+  blur(gDelta,1);
+}
+
+function blur(a, passes){
+  for(let p=0;p<passes;p++){
+    // horizontal
+    for(let y=0;y<GH;y++){
+      const o=y*GW;
+      let prev=a[o];
+      for(let x=0;x<GW;x++){
+        const c=a[o+x], nx=a[o+Math.min(GW-1,x+1)];
+        gTmp[o+x]=(prev+c+c+nx)*0.25; prev=c;
+      }
+    }
+    // vertical
+    for(let x=0;x<GW;x++){
+      let prev=gTmp[x];
+      for(let y=0;y<GH;y++){
+        const i=y*GW+x, c=gTmp[i], ny=gTmp[Math.min(GH-1,y+1)*GW+x];
+        a[i]=(prev+c+c+ny)*0.25; prev=c;
+      }
+    }
+  }
+}
+
+/* ---------- fallback: frame difference (used only if the model can't load) ---------- */
+function fallbackSample(){
+  if(!fbCanvas){
+    fbCanvas=document.createElement('canvas');
+    fbCanvas.width=112; fbCanvas.height=Math.round(112*video.videoHeight/video.videoWidth)||84;
+    fbCtx=fbCanvas.getContext('2d',{willReadFrequently:true});
+    fbPrev=new Float32Array(fbCanvas.width*fbCanvas.height);
+    ensureGrid(fbCanvas.width, fbCanvas.height);
+  }
+  const w=fbCanvas.width,h=fbCanvas.height;
+  fbCtx.drawImage(video,0,0,w,h);
+  const d=fbCtx.getImageData(0,0,w,h).data;
+  gPrev.set(gField);
+  for(let i=0,j=0;i<w*h;i++,j+=4){
+    const l=(d[j]*0.2126+d[j+1]*0.7152+d[j+2]*0.0722)/255;
+    const diff=Math.abs(l-fbPrev[i]); fbPrev[i]=l;
+    gField[i]=Math.max(gField[i]*0.90, diff>0.045 ? 1 : 0);
+  }
+  blur(gField,3);
+  for(let i=0;i<w*h;i++){
+    gDelta[i]=Math.max(gDelta[i]*0.72, Math.abs(gField[i]-gPrev[i]));
+  }
+  blur(gDelta,1);
+}
+
+/* ---------- coordinate mapping ---------- */
+function updateCover(){
+  const sa = window.innerWidth/window.innerHeight;
+  if(gridAspect > sa){ coverX = sa/gridAspect; coverY = 1; }
+  else { coverX = 1; coverY = gridAspect/sa; }
+}
+
+// screen uv (y up) -> grid value, nearest
+function fieldAt(a,x,y){
+  let u = mirror ? 1-x : x;
+  u = (u-0.5)*coverX+0.5;
+  const v = (y-0.5)*coverY+0.5;
+  let gx = (u*GW)|0, gy = ((1-v)*GH)|0;
+  if(gx<0)gx=0; else if(gx>=GW)gx=GW-1;
+  if(gy<0)gy=0; else if(gy>=GH)gy=GH-1;
+  return a[gy*GW+gx];
+}
+
+/* ---------- particles ---------- */
+function allocParticles(){
+  px=new Float32Array(MAXN); py=new Float32Array(MAXN);
+  vx=new Float32Array(MAXN); vy=new Float32Array(MAXN);
+  pb=new Float32Array(MAXN); ph=new Float32Array(MAXN);
+  for(let i=0;i<MAXN;i++) seed(i);
+}
+function seed(i){
+  px[i]=Math.random(); py[i]=Math.random();
+  vx[i]=0; vy[i]=0; pb[i]=0;
+  ph[i]=Math.random();
+}
+
+function buildPoints(n){
+  N=n;
+  if(geo) geo.dispose();
+  geo=new THREE.BufferGeometry();
+  posAttr=new THREE.BufferAttribute(new Float32Array(n*3),3).setUsage(THREE.DynamicDrawUsage);
+  colAttr=new THREE.BufferAttribute(new Float32Array(n*3),3).setUsage(THREE.DynamicDrawUsage);
+  sizeAttr=new THREE.BufferAttribute(new Float32Array(n),1);
+  const dpr=renderer.getPixelRatio();
+  for(let i=0;i<n;i++) sizeAttr.array[i]=(1.1+Math.random()*2.0)*dpr;
+  geo.setAttribute('position',posAttr);
+  geo.setAttribute('color',colAttr);
+  geo.setAttribute('aSize',sizeAttr);
+  if(points){ scene.remove(points); }
+  points=new THREE.Points(geo, pointMaterial());
+  points.frustumCulled=false;
+  scene.add(points);
+}
+
+function pointMaterial(){
+  return new THREE.ShaderMaterial({
+    vertexShader:[
+      'attribute float aSize;','varying vec3 vCol;',
+      'void main(){ vCol=color;',
+      '  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);',
+      '  gl_PointSize=aSize; }'
+    ].join('\n'),
+    fragmentShader:[
+      'varying vec3 vCol;',
+      'void main(){',
+      '  float d=length(gl_PointCoord-0.5);',
+      '  float a=smoothstep(0.5,0.02,d); a*=a;',
+      '  gl_FragColor=vec4(vCol*a,1.0); }'
+    ].join('\n'),
+    vertexColors:true, transparent:true, depthTest:false, depthWrite:false,
+    blending:THREE.AdditiveBlending
   });
-
-  quad=new THREE.Mesh(new THREE.PlaneBufferGeometry(2,2), showMat);
-  quad.frustumCulled=false;
-  scene.add(quad);
-
-  clock=new THREE.Clock();
-  resize();
-  window.addEventListener('resize', resize);
-  window.addEventListener('orientationchange', function(){ setTimeout(resize,250); });
 }
 
-function resize(){
-  var w=window.innerWidth, h=window.innerHeight;
-  renderer.setSize(w,h);
+let tSec=0;
+function step(dt){
+  const P=posAttr.array, C=colAttr.array;
+  const rep=params.repel, gsh=params.gush, flw=params.flow;
+  const damp=Math.pow(0.90, dt*60);
+  const e=1.6/GW;   // gradient step ~ one and a half grid cells
 
-  // simulation runs well below screen res — this is what keeps it smooth on a phone
-  var maxDim=380, sc=Math.min(1, maxDim/Math.max(w,h));
-  var rw=Math.max(96, Math.round(w*sc)), rh=Math.max(96, Math.round(h*sc));
+  for(let i=0;i<N;i++){
+    let x=px[i], y=py[i];
 
-  if(prevRT) prevRT.dispose();
-  if(trailA) trailA.dispose();
-  if(trailB) trailB.dispose();
-  prevRT=makeRT(rw,rh); trailA=makeRT(rw,rh); trailB=makeRT(rw,rh);
+    // occupancy + its gradient in screen space
+    const m  = fieldAt(gField,x,y);
+    const gx = fieldAt(gField,x+e,y) - fieldAt(gField,x-e,y);
+    const gy = fieldAt(gField,x,y+e) - fieldAt(gField,x,y-e);
+    const gm = Math.sqrt(gx*gx+gy*gy);
 
-  var texel=new THREE.Vector2(1/rw,1/rh);
-  trailMat.uniforms.uTexel.value.copy(texel);
-  showMat.uniforms.uTexel.value.copy(texel);
-  updateScale(rw/rh);
-  clearBuffers();
+    if(gm>1e-5){
+      // push down the gradient, i.e. away from the body
+      const inv=1/gm;
+      const push=rep*(0.25+m*1.6)*Math.min(gm*10,1.4);
+      vx[i]-=gx*inv*push; vy[i]-=gy*inv*push;
+    }else if(m>0.6){
+      // stranded deep inside: eject in a random direction
+      const a=Math.random()*6.283;
+      vx[i]+=Math.cos(a)*rep*0.7; vy[i]+=Math.sin(a)*rep*0.7;
+    }
+
+    // gush where the silhouette is changing fast
+    const d=fieldAt(gDelta,x,y);
+    if(d>0.02){
+      const s=Math.min(d*5,1)*gsh;
+      vx[i]+=(Math.random()-0.5)*s*1.6;
+      vy[i]+=(Math.random()*0.75+0.25)*s;
+      pb[i]+=s*26;
+    }
+
+    // ambient drift so the field is alive with nobody in frame
+    vx[i]+=(Math.sin(y*6.1+tSec*0.35)+Math.sin(x*4.3-tSec*0.21)*0.6)*flw*dt;
+    vy[i]+=(Math.cos(x*5.3-tSec*0.28)+Math.cos(y*3.7+tSec*0.19)*0.6)*flw*dt;
+
+    vx[i]*=damp; vy[i]*=damp;
+    const sp=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
+    if(sp>0.045){ const k=0.045/sp; vx[i]*=k; vy[i]*=k; }
+
+    x+=vx[i]*dt*60; y+=vy[i]*dt*60;
+    if(x<0)x+=1; else if(x>1)x-=1;
+    if(y<0)y+=1; else if(y>1)y-=1;
+    px[i]=x; py[i]=y;
+
+    pb[i]*=0.93;
+
+    const o=i*3;
+    P[o]=x; P[o+1]=y; P[o+2]=0;
+
+    // cool base hue, warmed and whitened by speed and gush
+    const h=ph[i], e2=Math.min(sp*26,1), b=pb[i];
+    C[o]  =0.16+h*0.22 + e2*0.35 + b*0.9;
+    C[o+1]=0.34+h*0.16 + e2*0.30 + b*0.85;
+    C[o+2]=0.62+h*0.30 + e2*0.18 + b*0.75;
+  }
+  posAttr.needsUpdate=true; colAttr.needsUpdate=true;
 }
 
-function updateScale(quadAspect){
-  if(!video.videoWidth) return;
-  var texAspect=video.videoWidth/video.videoHeight;
-  var sx=1, sy=1;
-  if(texAspect>quadAspect) sx=quadAspect/texAspect; else sy=texAspect/quadAspect;
-  copyMat.uniforms.uScale.value.set(sx,sy);
-  trailMat.uniforms.uScale.value.set(sx,sy);
-}
-
-function clearBuffers(){
-  var old=renderer.getClearColor ? renderer.getClearColor() : null;
-  renderer.setClearColor(0x000000,1);
-  [prevRT,trailA,trailB].forEach(function(rt){
-    renderer.setRenderTarget(rt); renderer.clear(true,false,false);
-  });
-  renderer.setRenderTarget(null);
-}
-
-function blit(mat, target){
-  quad.material=mat;
-  renderer.setRenderTarget(target||null);
-  renderer.render(scene,camOrtho);
-}
-
-/* ---------- loop ---------- */
-function loop(){
+/* ---------- render loop ---------- */
+let last=0, fpsAcc=0, fpsN=0;
+function loop(now){
   if(!running) return;
   requestAnimationFrame(loop);
-  if(video.readyState < 2) return;
+  if(video.readyState<2) return;
 
-  t0 += clock.getDelta();
-  trailMat.uniforms.uTime.value = t0;
+  const dt=Math.min(0.05,(now-last)/1000||0.016); last=now; tSec+=dt;
 
-  // 1. accumulate: current frame vs previous frame, added on top of the decaying trail
-  trailMat.uniforms.uPrev.value  = prevRT.texture;
-  trailMat.uniforms.uTrail.value = trailA.texture;
-  blit(trailMat, trailB);
+  if(segmenter && !useFallback){
+    try{
+      segmenter.segmentForVideo(video, now, res=>{
+        const cm=res.confidenceMasks;
+        if(cm && cm.length){
+          const m=cm[cm.length-1];
+          ingest(m.getAsFloat32Array(), m.width, m.height);
+        }
+        res.close();
+      });
+    }catch(err){ useFallback=true; }
+  }else{
+    fallbackSample();
+  }
 
-  // 2. remember this frame for the next comparison
-  blit(copyMat, prevRT);
+  fadeMat.opacity=params.fade;
+  renderer.clear(false,false,false);
+  renderer.render(fadeScene,cam);
 
-  // 3. draw
-  showMat.uniforms.uTrail.value = trailB.texture;
-  blit(showMat, null);
+  if(showMask){
+    for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){
+      let sx = mirror ? GW-1-x : x;
+      maskTexData[(GH-1-y)*GW+x]=gField[y*GW+sx]*255;
+    }
+    maskTex.needsUpdate=true;
+    renderer.render(maskScene,cam);
+  }else{
+    step(dt);
+    renderer.render(scene,cam);
+  }
 
-  var tmp=trailA; trailA=trailB; trailB=tmp;
+  fpsAcc+=1/dt; fpsN++;
+  if(fpsN>=30){ fpsEl.textContent=Math.round(fpsAcc/fpsN)+' fps'; fpsAcc=0; fpsN=0; }
 }
 
-/* ---------- camera ---------- */
-function startCamera(){
-  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    fail('このページはHTTPS（またはlocalhost）でないとカメラを使えません。GitHub Pagesなどに置いてから開いてください。');
+/* ---------- setup ---------- */
+function init(){
+  renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'high-performance'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setClearColor(0x000000,1);
+  renderer.autoClear=false;
+  renderer.clear();
+  document.body.appendChild(renderer.domElement);
+
+  cam=new THREE.OrthographicCamera(0,1,1,0,-1,1);
+  scene=new THREE.Scene();
+
+  fadeScene=new THREE.Scene();
+  fadeMat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.18,depthTest:false});
+  const fq=new THREE.Mesh(new THREE.PlaneGeometry(1,1),fadeMat);
+  fq.position.set(0.5,0.5,0); fq.frustumCulled=false; fadeScene.add(fq);
+
+  maskScene=new THREE.Scene();
+  maskMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),
+    new THREE.MeshBasicMaterial({map:null,depthTest:false}));
+  maskMesh.position.set(0.5,0.5,0); maskMesh.frustumCulled=false; maskScene.add(maskMesh);
+
+  allocParticles();
+  buildPoints(parseInt($('count').value,10));
+  addEventListener('resize',onResize);
+  addEventListener('orientationchange',()=>setTimeout(onResize,250));
+}
+
+function onResize(){
+  renderer.setSize(innerWidth,innerHeight);
+  updateCover();
+}
+
+async function start(){
+  if(!navigator.mediaDevices?.getUserMedia){
+    fail('HTTPS（またはlocalhost）でないとカメラを使えません。GitHub Pages などに置いてから開いてください。');
     return;
   }
-  if(stream) stream.getTracks().forEach(function(t){t.stop();});
-
-  navigator.mediaDevices.getUserMedia({
-    audio:false,
-    video:{ facingMode:facing, width:{ideal:640}, height:{ideal:480} }
-  }).then(function(s){
-    stream=s;
-    video.srcObject=s;
-    return video.play();
-  }).then(function(){
-    if(!started){
-      started=true;
-      init();
-      gate.style.display='none';
-      ui.style.display='flex';
-      bindUI();
-      showUI();
+  try{
+    if(!segmenter && !useFallback){
+      try{ await loadSegmenter(); }
+      catch(e){ useFallback=true; statusEl.textContent='人物検出モデルを読めなかったので簡易モードで動かします'; }
     }
-    trailMat.uniforms.uMirror.value = (facing==='user') ? 1 : 0;
-    copyMat.uniforms.uMirror.value  = (facing==='user') ? 1 : 0;
-    updateScale(1);
-    resize();
-    running=true;
-    loop();
-  }).catch(function(e){
-    fail('カメラを開けませんでした（' + (e && e.name ? e.name : 'error') + '）。ブラウザの設定でカメラを許可するか、HTTPSで開き直してください。');
-  });
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:false, video:{facingMode:facing,width:{ideal:640},height:{ideal:480}}
+    });
+    video.srcObject=stream;
+    await video.play();
+
+    mirror = facing==='user' ? 1 : 0;
+    if(!started){ started=true; init(); gate.style.display='none'; ui.style.display='flex'; bindUI(); showUI(); }
+    fbCanvas=null;
+    ensureGrid(video.videoWidth||640, video.videoHeight||480);
+    updateCover();
+    running=true; last=performance.now(); requestAnimationFrame(loop);
+  }catch(e){
+    fail('カメラを開けませんでした（'+(e?.name||'error')+'）。ブラウザ設定でカメラを許可するか、HTTPSで開き直してください。');
+  }
 }
 
-function fail(msg){
-  errEl.textContent=msg;
-  errEl.style.display='block';
-}
+function fail(m){ errEl.textContent=m; errEl.style.display='block'; statusEl.textContent=''; }
 
 /* ---------- ui ---------- */
-var hideTimer=null;
+let hideTimer=null;
 function showUI(){
   ui.classList.remove('hidden');
-  hint.style.opacity='0';
   clearTimeout(hideTimer);
-  hideTimer=setTimeout(function(){ ui.classList.add('hidden'); }, 4500);
+  hideTimer=setTimeout(()=>ui.classList.add('hidden'),5000);
 }
-
 function bindUI(){
-  document.getElementById('sens').addEventListener('input', function(e){
-    trailMat.uniforms.uSens.value=parseFloat(e.target.value); showUI();
-  });
-  document.getElementById('decay').addEventListener('input', function(e){
-    trailMat.uniforms.uDecay.value=parseFloat(e.target.value); showUI();
-  });
-  document.getElementById('rise').addEventListener('input', function(e){
-    trailMat.uniforms.uRise.value=parseFloat(e.target.value); showUI();
-  });
+  const on=(id,fn)=>$(id).addEventListener('input',e=>{fn(parseFloat(e.target.value));showUI();});
+  on('repel',v=>params.repel=v);
+  on('gush', v=>params.gush=v);
+  on('flow', v=>params.flow=v);
+  on('fade', v=>params.fade=v);
+  $('count').addEventListener('change',e=>{buildPoints(parseInt(e.target.value,10));showUI();});
 
-  var modeBtn=document.getElementById('modeBtn');
-  modeBtn.addEventListener('click', function(){
-    mode=mode?0:1;
-    showMat.uniforms.uMode.value=mode;
-    modeBtn.classList.toggle('on', mode===1);
-    modeBtn.textContent = mode ? '光にもどす' : '検出を見る';
-    showUI();
+  const maskBtn=$('maskBtn');
+  maskBtn.addEventListener('click',()=>{
+    showMask=!showMask; maskBtn.classList.toggle('on',showMask);
+    maskBtn.textContent=showMask?'粒にもどす':'判定を見る'; showUI();
   });
-
-  document.getElementById('clearBtn').addEventListener('click', function(){
-    clearBuffers(); showUI();
+  const invBtn=$('invBtn');
+  invBtn.addEventListener('click',()=>{ invert=!invert; invBtn.classList.toggle('on',invert); showUI(); });
+  $('camBtn').addEventListener('click',()=>{
+    facing = facing==='user' ? 'environment' : 'user';
+    running=false; start(); showUI();
   });
-
-  document.getElementById('camBtn').addEventListener('click', function(){
-    facing = (facing==='user') ? 'environment' : 'user';
-    running=false;
-    startCamera();
-    showUI();
-  });
-
-  var fsBtn=document.getElementById('fsBtn');
-  fsBtn.addEventListener('click', function(){
-    var el=document.documentElement;
+  $('fsBtn').addEventListener('click',()=>{
+    const el=document.documentElement;
     if(!document.fullscreenElement && !document.webkitFullscreenElement){
-      (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el);
+      (el.requestFullscreen||el.webkitRequestFullscreen||(()=>{})).call(el);
     }else{
-      (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document);
+      (document.exitFullscreen||document.webkitExitFullscreen||(()=>{})).call(document);
     }
     showUI();
   });
-
-  renderer.domElement.addEventListener('pointerdown', showUI);
-  document.addEventListener('visibilitychange', function(){
-    if(document.hidden){ running=false; }
-    else if(started && stream){ running=true; loop(); }
+  renderer.domElement.addEventListener('pointerdown',showUI);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden) running=false;
+    else if(started&&stream){ running=true; last=performance.now(); requestAnimationFrame(loop); }
   });
 }
 
-document.getElementById('startBtn').addEventListener('click', startCamera);
-
-})();
+$('startBtn').addEventListener('click',start);
 </script>
 </body>
 </html>
