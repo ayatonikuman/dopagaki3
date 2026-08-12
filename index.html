@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
-<title>粒子場 — RYUSHI FIELD</title>
+<title>粒子場 — RYUSHI FIELD / overlay</title>
 <style>
   :root{
-    --ink:#e8f2ff; --dim:rgba(232,242,255,.45); --line:rgba(232,242,255,.15);
-    --glow:#8fb6ff; --panel:rgba(6,8,14,.6);
+    --ink:#eef3ff; --dim:rgba(238,243,255,.45); --line:rgba(238,243,255,.15);
+    --glow:#9fd0ff; --panel:rgba(6,8,14,.6);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;background:#000;overflow:hidden}
@@ -16,8 +16,8 @@
   canvas{display:block;width:100%;height:100%}
 
   #gate{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:26px;padding:32px;text-align:center;
-    background:radial-gradient(120% 90% at 50% 40%,#0a1020 0%,#000 72%)}
+    justify-content:center;gap:24px;padding:32px;text-align:center;
+    background:radial-gradient(120% 90% at 50% 38%,#101426 0%,#000 74%)}
   #gate h1{margin:0;font-size:12px;font-weight:400;letter-spacing:.6em;text-indent:.6em;color:var(--dim)}
   #gate .jp{margin:0;font-size:32px;font-weight:200;letter-spacing:.34em;text-indent:.34em}
   #startBtn{appearance:none;border:1px solid var(--line);background:transparent;color:var(--ink);
@@ -31,26 +31,26 @@
     padding-top:16px;color:#ffb0a4}
 
   #ui{position:fixed;left:0;right:0;bottom:0;z-index:10;
-    padding:14px 16px calc(14px + env(safe-area-inset-bottom));
-    display:none;gap:9px;flex-direction:column;
-    background:linear-gradient(to top,rgba(0,0,0,.75),transparent);transition:opacity .5s}
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    display:none;gap:7px;flex-direction:column;
+    background:linear-gradient(to top,rgba(0,0,0,.78),transparent);transition:opacity .5s}
   #ui.hidden{opacity:0;pointer-events:none}
   .row{display:flex;align-items:center;gap:12px}
   .row label{font-size:10px;letter-spacing:.16em;color:var(--dim);width:3.4em;flex:none}
-  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:22px;background:transparent}
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:20px;background:transparent}
   input[type=range]::-webkit-slider-runnable-track{height:1px;background:var(--line)}
   input[type=range]::-moz-range-track{height:1px;background:var(--line)}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-6.5px;
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;margin-top:-6px;
     border-radius:50%;background:var(--glow);box-shadow:0 0 12px -2px var(--glow)}
-  input[type=range]::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--glow)}
-  .btns{display:flex;gap:7px}
+  input[type=range]::-moz-range-thumb{width:13px;height:13px;border:none;border-radius:50%;background:var(--glow)}
+  .btns{display:flex;gap:7px;margin-top:3px}
   .btns button{flex:1;appearance:none;background:var(--panel);border:1px solid var(--line);color:var(--dim);
     font:inherit;font-size:10px;letter-spacing:.1em;padding:11px 2px;border-radius:8px;cursor:pointer;
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .btns button.on{color:#050a14;background:var(--glow);border-color:var(--glow)}
   .btns button:focus-visible{outline:1px solid var(--glow);outline-offset:2px}
   #fps{position:fixed;top:calc(10px + env(safe-area-inset-top));right:14px;z-index:10;font-size:10px;
-    letter-spacing:.1em;color:rgba(232,242,255,.3);pointer-events:none}
+    letter-spacing:.1em;color:rgba(238,243,255,.35);pointer-events:none}
 </style>
 </head>
 <body>
@@ -60,18 +60,19 @@
   <p class="jp">粒子場</p>
   <button id="startBtn">はじめる</button>
   <p id="status"></p>
-  <p class="note">画面いっぱいの粒がゆっくり漂っています。体を近づけると粒が押しのけられ、動かした場所から噴き出します。映像は端末の外に出ません。</p>
+  <p class="note">カメラ映像の上に色とりどりの粒が漂います。体を近づけると粒が押しのけられ、動かした場所から噴き出します。映像は端末の外に出ません。</p>
   <p id="err"></p>
 </div>
 
 <div id="fps"></div>
 
 <div id="ui">
-  <div class="row"><label>密度</label><input id="count" type="range" min="3000" max="40000" step="1000" value="16000"></div>
-  <div class="row"><label>反発</label><input id="repel" type="range" min="0" max="0.02" step="0.0005" value="0.0065"></div>
-  <div class="row"><label>噴出</label><input id="gush"  type="range" min="0" max="0.05" step="0.001" value="0.016"></div>
-  <div class="row"><label>流れ</label><input id="flow"  type="range" min="0" max="0.06" step="0.001" value="0.018"></div>
-  <div class="row"><label>残像</label><input id="fade"  type="range" min="0.03" max="0.6" step="0.01" value="0.18"></div>
+  <div class="row"><label>映像</label><input id="vid"   type="range" min="0" max="1"     step="0.02"   value="0.42"></div>
+  <div class="row"><label>密度</label><input id="count" type="range" min="3000" max="40000" step="1000"  value="16000"></div>
+  <div class="row"><label>反発</label><input id="repel" type="range" min="0" max="0.02"  step="0.0005" value="0.0065"></div>
+  <div class="row"><label>噴出</label><input id="gush"  type="range" min="0" max="0.05"  step="0.001"  value="0.016"></div>
+  <div class="row"><label>残像</label><input id="fade"  type="range" min="0.05" max="0.8" step="0.01"   value="0.26"></div>
+  <div class="row"><label>色</label>  <input id="hue"   type="range" min="0" max="1"     step="0.005"  value="0"></div>
   <div class="btns">
     <button id="camBtn">カメラ</button>
     <button id="maskBtn">判定を見る</button>
@@ -85,140 +86,129 @@
 "use strict";
 
 /* =========================================================================
-   構成
-   1. MediaPipe Image Segmenter が人物シルエットを毎フレーム返す（256x256程度）
-   2. それを粗いグリッド(GW x GH)に落として数回ぼかす → occupancy field
-   3. 粒子は CPU で更新。field の勾配で押し出され、field の時間差分で噴き出す
-   4. THREE.Points に加算合成で描画。背景は黒を薄く重ねて残像にする
+   1. MediaPipe Image Segmenter が人物シルエットを返す
+   2. 粗いグリッドに落としてぼかす → 占有場（体＝面）
+   3. 粒子は CPU 更新。占有場の勾配で押し出され、時間差分で噴き出す
+   4. 粒子は加算合成で trailRT に溜める（残像）
+   5. 合成パスで「カメラ映像 + trailRT」を画面に出す  ← 今回の追加
    ========================================================================= */
 
 const $ = id => document.getElementById(id);
 const gate=$('gate'), errEl=$('err'), statusEl=$('status'), ui=$('ui'), fpsEl=$('fps');
 
-/* ---------- state ---------- */
-let renderer, cam, scene, fadeScene, maskScene;
-let points, geo, posAttr, colAttr, sizeAttr, fadeMat;
-let maskTex, maskTexData, maskMesh;
+let renderer, cam, scene, fadeScene, compScene, maskScene;
+let trailRT, compMat, points, geo, posAttr, colAttr, sizeAttr, fadeMat;
+let videoTex, maskTex, maskTexData, maskMesh;
 
-const video = document.createElement('video');
-video.setAttribute('playsinline','');
-video.setAttribute('webkit-playsinline','');
-video.muted = true; video.autoplay = true; video.playsInline = true;
+const video=document.createElement('video');
+video.setAttribute('playsinline',''); video.setAttribute('webkit-playsinline','');
+video.muted=true; video.autoplay=true; video.playsInline=true;
 
 let stream=null, facing='user', segmenter=null, useFallback=false;
 let running=false, started=false, showMask=false, invert=false;
 
-// occupancy grid
-let GW=0, GH=0, gridAspect=1;
-let gField=null, gTmp=null, gPrev=null, gDelta=null;
-let fbCanvas=null, fbCtx=null, fbPrev=null;   // fallback frame-diff path
+let GW=0,GH=0, videoAspect=4/3;
+let gField=null,gTmp=null,gPrev=null,gDelta=null;
+let fbCanvas=null,fbCtx=null,fbPrev=null;
 
-// particles
-let N=0, MAXN=40000;
+let N=0; const MAXN=40000;
 let px,py,vx,vy,pb,ph;
-const params = { repel:0.0065, gush:0.016, flow:0.018, fade:0.18 };
+const params={repel:0.0065,gush:0.016,flow:0.018,fade:0.26,vid:0.42,hue:0};
 
-// video -> screen cover transform
-let coverX=1, coverY=1, mirror=1;
+let coverX=1,coverY=1,mirror=1;
+
+/* ---------- colour lookup: full spectrum ---------- */
+const LUT=new Float32Array(256*3);
+(function(){
+  for(let i=0;i<256;i++){
+    const h=i/256, o=i*3, T=6.28318530718;
+    LUT[o  ]=0.5+0.5*Math.cos(T*(h+0.00));
+    LUT[o+1]=0.5+0.5*Math.cos(T*(h+0.33));
+    LUT[o+2]=0.5+0.5*Math.cos(T*(h+0.67));
+  }
+})();
 
 /* ---------- segmentation ---------- */
 async function loadSegmenter(){
-  statusEl.textContent = 'モデルを読み込み中…';
-  const vision = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18");
-  const files = await vision.FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm"
-  );
-  segmenter = await vision.ImageSegmenter.createFromOptions(files, {
+  statusEl.textContent='モデルを読み込み中…';
+  const v=await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18");
+  const files=await v.FilesetResolver.forVisionTasks(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.18/wasm");
+  segmenter=await v.ImageSegmenter.createFromOptions(files,{
     baseOptions:{
       modelAssetPath:"https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite",
       delegate:"GPU"
     },
-    runningMode:"VIDEO",
-    outputCategoryMask:false,
-    outputConfidenceMasks:true
+    runningMode:"VIDEO", outputCategoryMask:false, outputConfidenceMasks:true
   });
-  statusEl.textContent = '';
+  statusEl.textContent='';
 }
 
-/* ---------- grid ---------- */
-function ensureGrid(srcW, srcH){
-  const targetW = 112;
-  const w = targetW;
-  const h = Math.max(24, Math.round(targetW * srcH / srcW));
-  if(w===GW && h===GH) return;
-  GW=w; GH=h; gridAspect = srcW/srcH;
+/* ---------- occupancy grid ---------- */
+function ensureGrid(srcW,srcH){
+  const w=112, h=Math.max(24,Math.round(112*srcH/srcW));
+  if(w===GW&&h===GH) return;
+  GW=w; GH=h;
   const n=GW*GH;
   gField=new Float32Array(n); gTmp=new Float32Array(n);
   gPrev=new Float32Array(n);  gDelta=new Float32Array(n);
   maskTexData=new Uint8Array(n);
   if(maskTex) maskTex.dispose();
   maskTex=new THREE.DataTexture(maskTexData,GW,GH,THREE.LuminanceFormat,THREE.UnsignedByteType);
-  maskTex.minFilter=maskTex.magFilter=THREE.LinearFilter;
-  maskTex.needsUpdate=true;
+  maskTex.minFilter=maskTex.magFilter=THREE.LinearFilter; maskTex.needsUpdate=true;
   if(maskMesh) maskMesh.material.map=maskTex;
-  updateCover();
 }
 
-// resample an incoming mask (any resolution) into the working grid
-function ingest(src, sw, sh){
-  ensureGrid(sw, sh);
+function ingest(src,sw,sh){
+  ensureGrid(sw,sh);
   for(let y=0;y<GH;y++){
-    const sy = Math.min(sh-1, (y*sh/GH)|0);
-    const ro = sy*sw, wo = y*GW;
-    for(let x=0;x<GW;x++){
-      const sx = Math.min(sw-1, (x*sw/GW)|0);
-      gTmp[wo+x] = src[ro+sx];
-    }
+    const sy=Math.min(sh-1,(y*sh/GH)|0), ro=sy*sw, wo=y*GW;
+    for(let x=0;x<GW;x++) gTmp[wo+x]=src[ro+Math.min(sw-1,(x*sw/GW)|0)];
   }
-  // auto-orient: the frame border is almost always background
+  // the frame border is nearly always background — use it to decide polarity
   let border=0,bn=0,center=0,cn=0;
-  for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
     const v=gTmp[y*GW+x];
     if(x<3||y<3||x>GW-4||y>GH-4){border+=v;bn++;}
     else if(x>GW*0.35&&x<GW*0.65&&y>GH*0.35&&y<GH*0.65){center+=v;cn++;}
   }
-  const flip = (bn&&cn&&(border/bn) > (center/cn)+0.15) !== invert;
+  const flip=(bn&&cn&&(border/bn)>(center/cn)+0.15)!==invert;
 
   gPrev.set(gField);
-  for(let i=0;i<GW*GH;i++) gField[i] = flip ? 1-gTmp[i] : gTmp[i];
+  for(let i=0;i<GW*GH;i++) gField[i]=flip?1-gTmp[i]:gTmp[i];
   blur(gField,3);
-  for(let i=0;i<GW*GH;i++){
-    const d = Math.abs(gField[i]-gPrev[i]);
-    gDelta[i] = Math.max(gDelta[i]*0.72, d);
-  }
+  for(let i=0;i<GW*GH;i++) gDelta[i]=Math.max(gDelta[i]*0.72,Math.abs(gField[i]-gPrev[i]));
   blur(gDelta,1);
 }
 
-function blur(a, passes){
+function blur(a,passes){
   for(let p=0;p<passes;p++){
-    // horizontal
     for(let y=0;y<GH;y++){
-      const o=y*GW;
-      let prev=a[o];
+      const o=y*GW; let prev=a[o];
       for(let x=0;x<GW;x++){
-        const c=a[o+x], nx=a[o+Math.min(GW-1,x+1)];
-        gTmp[o+x]=(prev+c+c+nx)*0.25; prev=c;
+        const c=a[o+x];
+        gTmp[o+x]=(prev+c+c+a[o+Math.min(GW-1,x+1)])*0.25; prev=c;
       }
     }
-    // vertical
     for(let x=0;x<GW;x++){
       let prev=gTmp[x];
       for(let y=0;y<GH;y++){
-        const i=y*GW+x, c=gTmp[i], ny=gTmp[Math.min(GH-1,y+1)*GW+x];
-        a[i]=(prev+c+c+ny)*0.25; prev=c;
+        const i=y*GW+x, c=gTmp[i];
+        a[i]=(prev+c+c+gTmp[Math.min(GH-1,y+1)*GW+x])*0.25; prev=c;
       }
     }
   }
 }
 
-/* ---------- fallback: frame difference (used only if the model can't load) ---------- */
+/* ---------- fallback (model unavailable) ---------- */
 function fallbackSample(){
   if(!fbCanvas){
     fbCanvas=document.createElement('canvas');
-    fbCanvas.width=112; fbCanvas.height=Math.round(112*video.videoHeight/video.videoWidth)||84;
+    fbCanvas.width=112;
+    fbCanvas.height=Math.round(112*(video.videoHeight||480)/(video.videoWidth||640));
     fbCtx=fbCanvas.getContext('2d',{willReadFrequently:true});
     fbPrev=new Float32Array(fbCanvas.width*fbCanvas.height);
-    ensureGrid(fbCanvas.width, fbCanvas.height);
+    ensureGrid(fbCanvas.width,fbCanvas.height);
   }
   const w=fbCanvas.width,h=fbCanvas.height;
   fbCtx.drawImage(video,0,0,w,h);
@@ -227,28 +217,29 @@ function fallbackSample(){
   for(let i=0,j=0;i<w*h;i++,j+=4){
     const l=(d[j]*0.2126+d[j+1]*0.7152+d[j+2]*0.0722)/255;
     const diff=Math.abs(l-fbPrev[i]); fbPrev[i]=l;
-    gField[i]=Math.max(gField[i]*0.90, diff>0.045 ? 1 : 0);
+    gField[i]=Math.max(gField[i]*0.90, diff>0.045?1:0);
   }
   blur(gField,3);
-  for(let i=0;i<w*h;i++){
-    gDelta[i]=Math.max(gDelta[i]*0.72, Math.abs(gField[i]-gPrev[i]));
-  }
+  for(let i=0;i<w*h;i++) gDelta[i]=Math.max(gDelta[i]*0.72,Math.abs(gField[i]-gPrev[i]));
   blur(gDelta,1);
 }
 
-/* ---------- coordinate mapping ---------- */
+/* ---------- mapping ---------- */
 function updateCover(){
-  const sa = window.innerWidth/window.innerHeight;
-  if(gridAspect > sa){ coverX = sa/gridAspect; coverY = 1; }
-  else { coverX = 1; coverY = gridAspect/sa; }
+  const sa=innerWidth/innerHeight;
+  if(videoAspect>sa){ coverX=sa/videoAspect; coverY=1; }
+  else { coverX=1; coverY=videoAspect/sa; }
+  if(compMat){
+    compMat.uniforms.uScale.value.set(coverX,coverY);
+    compMat.uniforms.uMirror.value=mirror;
+  }
 }
 
-// screen uv (y up) -> grid value, nearest
 function fieldAt(a,x,y){
-  let u = mirror ? 1-x : x;
-  u = (u-0.5)*coverX+0.5;
-  const v = (y-0.5)*coverY+0.5;
-  let gx = (u*GW)|0, gy = ((1-v)*GH)|0;
+  let u=mirror?1-x:x;
+  u=(u-0.5)*coverX+0.5;
+  const v=(y-0.5)*coverY+0.5;
+  let gx=(u*GW)|0, gy=((1-v)*GH)|0;
   if(gx<0)gx=0; else if(gx>=GW)gx=GW-1;
   if(gy<0)gy=0; else if(gy>=GH)gy=GH-1;
   return a[gy*GW+gx];
@@ -259,12 +250,10 @@ function allocParticles(){
   px=new Float32Array(MAXN); py=new Float32Array(MAXN);
   vx=new Float32Array(MAXN); vy=new Float32Array(MAXN);
   pb=new Float32Array(MAXN); ph=new Float32Array(MAXN);
-  for(let i=0;i<MAXN;i++) seed(i);
-}
-function seed(i){
-  px[i]=Math.random(); py[i]=Math.random();
-  vx[i]=0; vy[i]=0; pb[i]=0;
-  ph[i]=Math.random();
+  for(let i=0;i<MAXN;i++){
+    px[i]=Math.random(); py[i]=Math.random();
+    vx[i]=vy[i]=pb[i]=0; ph[i]=Math.random();
+  }
 }
 
 function buildPoints(n){
@@ -275,64 +264,52 @@ function buildPoints(n){
   colAttr=new THREE.BufferAttribute(new Float32Array(n*3),3).setUsage(THREE.DynamicDrawUsage);
   sizeAttr=new THREE.BufferAttribute(new Float32Array(n),1);
   const dpr=renderer.getPixelRatio();
-  for(let i=0;i<n;i++) sizeAttr.array[i]=(1.1+Math.random()*2.0)*dpr;
+  for(let i=0;i<n;i++) sizeAttr.array[i]=(1.2+Math.random()*2.2)*dpr;
   geo.setAttribute('position',posAttr);
   geo.setAttribute('color',colAttr);
   geo.setAttribute('aSize',sizeAttr);
-  if(points){ scene.remove(points); }
-  points=new THREE.Points(geo, pointMaterial());
+  if(points) scene.remove(points);
+  points=new THREE.Points(geo,new THREE.ShaderMaterial({
+    vertexShader:[
+      'attribute float aSize;','varying vec3 vCol;',
+      'void main(){ vCol=color;',
+      ' gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);',
+      ' gl_PointSize=aSize; }'].join('\n'),
+    fragmentShader:[
+      'varying vec3 vCol;',
+      'void main(){ float d=length(gl_PointCoord-0.5);',
+      ' float a=smoothstep(0.5,0.02,d); a*=a;',
+      ' gl_FragColor=vec4(vCol*a,1.0); }'].join('\n'),
+    vertexColors:true,transparent:true,depthTest:false,depthWrite:false,
+    blending:THREE.AdditiveBlending
+  }));
   points.frustumCulled=false;
   scene.add(points);
 }
 
-function pointMaterial(){
-  return new THREE.ShaderMaterial({
-    vertexShader:[
-      'attribute float aSize;','varying vec3 vCol;',
-      'void main(){ vCol=color;',
-      '  gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);',
-      '  gl_PointSize=aSize; }'
-    ].join('\n'),
-    fragmentShader:[
-      'varying vec3 vCol;',
-      'void main(){',
-      '  float d=length(gl_PointCoord-0.5);',
-      '  float a=smoothstep(0.5,0.02,d); a*=a;',
-      '  gl_FragColor=vec4(vCol*a,1.0); }'
-    ].join('\n'),
-    vertexColors:true, transparent:true, depthTest:false, depthWrite:false,
-    blending:THREE.AdditiveBlending
-  });
-}
-
 let tSec=0;
 function step(dt){
-  const P=posAttr.array, C=colAttr.array;
-  const rep=params.repel, gsh=params.gush, flw=params.flow;
-  const damp=Math.pow(0.90, dt*60);
-  const e=1.6/GW;   // gradient step ~ one and a half grid cells
+  const P=posAttr.array,C=colAttr.array;
+  const rep=params.repel,gsh=params.gush,flw=params.flow,hueOff=params.hue;
+  const damp=Math.pow(0.90,dt*60);
+  const e=1.6/GW;
 
   for(let i=0;i<N;i++){
-    let x=px[i], y=py[i];
+    let x=px[i],y=py[i];
 
-    // occupancy + its gradient in screen space
-    const m  = fieldAt(gField,x,y);
-    const gx = fieldAt(gField,x+e,y) - fieldAt(gField,x-e,y);
-    const gy = fieldAt(gField,x,y+e) - fieldAt(gField,x,y-e);
-    const gm = Math.sqrt(gx*gx+gy*gy);
+    const m =fieldAt(gField,x,y);
+    const gx=fieldAt(gField,x+e,y)-fieldAt(gField,x-e,y);
+    const gy=fieldAt(gField,x,y+e)-fieldAt(gField,x,y-e);
+    const gm=Math.sqrt(gx*gx+gy*gy);
 
     if(gm>1e-5){
-      // push down the gradient, i.e. away from the body
-      const inv=1/gm;
-      const push=rep*(0.25+m*1.6)*Math.min(gm*10,1.4);
+      const inv=1/gm, push=rep*(0.25+m*1.6)*Math.min(gm*10,1.4);
       vx[i]-=gx*inv*push; vy[i]-=gy*inv*push;
     }else if(m>0.6){
-      // stranded deep inside: eject in a random direction
       const a=Math.random()*6.283;
       vx[i]+=Math.cos(a)*rep*0.7; vy[i]+=Math.sin(a)*rep*0.7;
     }
 
-    // gush where the silhouette is changing fast
     const d=fieldAt(gDelta,x,y);
     if(d>0.02){
       const s=Math.min(d*5,1)*gsh;
@@ -341,71 +318,71 @@ function step(dt){
       pb[i]+=s*26;
     }
 
-    // ambient drift so the field is alive with nobody in frame
     vx[i]+=(Math.sin(y*6.1+tSec*0.35)+Math.sin(x*4.3-tSec*0.21)*0.6)*flw*dt;
     vy[i]+=(Math.cos(x*5.3-tSec*0.28)+Math.cos(y*3.7+tSec*0.19)*0.6)*flw*dt;
 
     vx[i]*=damp; vy[i]*=damp;
     const sp=Math.sqrt(vx[i]*vx[i]+vy[i]*vy[i]);
-    if(sp>0.045){ const k=0.045/sp; vx[i]*=k; vy[i]*=k; }
+    if(sp>0.045){const k=0.045/sp; vx[i]*=k; vy[i]*=k;}
 
     x+=vx[i]*dt*60; y+=vy[i]*dt*60;
     if(x<0)x+=1; else if(x>1)x-=1;
     if(y<0)y+=1; else if(y>1)y-=1;
-    px[i]=x; py[i]=y;
-
-    pb[i]*=0.93;
+    px[i]=x; py[i]=y; pb[i]*=0.93;
 
     const o=i*3;
     P[o]=x; P[o+1]=y; P[o+2]=0;
 
-    // cool base hue, warmed and whitened by speed and gush
-    const h=ph[i], e2=Math.min(sp*26,1), b=pb[i];
-    C[o]  =0.16+h*0.22 + e2*0.35 + b*0.9;
-    C[o+1]=0.34+h*0.16 + e2*0.30 + b*0.85;
-    C[o+2]=0.62+h*0.30 + e2*0.18 + b*0.75;
+    // hue: per-particle base, drifting slowly, shifted by height and the 色 slider
+    let h=ph[i]+hueOff+tSec*0.015+y*0.18;
+    h-=Math.floor(h);
+    const lo=(h*255|0)*3;
+    const b=pb[i], gain=0.5+Math.min(sp*26,1)*1.0+b*1.1;
+    C[o  ]=LUT[lo  ]*gain+b*0.45;
+    C[o+1]=LUT[lo+1]*gain+b*0.45;
+    C[o+2]=LUT[lo+2]*gain+b*0.45;
   }
   posAttr.needsUpdate=true; colAttr.needsUpdate=true;
 }
 
-/* ---------- render loop ---------- */
-let last=0, fpsAcc=0, fpsN=0;
+/* ---------- loop ---------- */
+let last=0,fpsAcc=0,fpsN=0;
 function loop(now){
   if(!running) return;
   requestAnimationFrame(loop);
   if(video.readyState<2) return;
-
   const dt=Math.min(0.05,(now-last)/1000||0.016); last=now; tSec+=dt;
 
-  if(segmenter && !useFallback){
+  if(segmenter&&!useFallback){
     try{
-      segmenter.segmentForVideo(video, now, res=>{
+      segmenter.segmentForVideo(video,now,res=>{
         const cm=res.confidenceMasks;
-        if(cm && cm.length){
-          const m=cm[cm.length-1];
-          ingest(m.getAsFloat32Array(), m.width, m.height);
-        }
+        if(cm&&cm.length){ const m=cm[cm.length-1]; ingest(m.getAsFloat32Array(),m.width,m.height); }
         res.close();
       });
     }catch(err){ useFallback=true; }
-  }else{
-    fallbackSample();
-  }
-
-  fadeMat.opacity=params.fade;
-  renderer.clear(false,false,false);
-  renderer.render(fadeScene,cam);
+  }else fallbackSample();
 
   if(showMask){
-    for(let y=0;y<GH;y++) for(let x=0;x<GW;x++){
-      let sx = mirror ? GW-1-x : x;
+    for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){
+      const sx=mirror?GW-1-x:x;
       maskTexData[(GH-1-y)*GW+x]=gField[y*GW+sx]*255;
     }
     maskTex.needsUpdate=true;
+    renderer.setRenderTarget(null);
+    renderer.clear(true,false,false);
     renderer.render(maskScene,cam);
   }else{
     step(dt);
+    // accumulate particles into the trail buffer
+    fadeMat.opacity=params.fade;
+    renderer.setRenderTarget(trailRT);
+    renderer.render(fadeScene,cam);
     renderer.render(scene,cam);
+    // composite: camera image underneath, light on top
+    compMat.uniforms.uVideoAmt.value=params.vid;
+    renderer.setRenderTarget(null);
+    renderer.render(compScene,cam);
   }
 
   fpsAcc+=1/dt; fpsN++;
@@ -415,7 +392,7 @@ function loop(now){
 /* ---------- setup ---------- */
 function init(){
   renderer=new THREE.WebGLRenderer({antialias:false,alpha:false,powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
   renderer.setSize(innerWidth,innerHeight);
   renderer.setClearColor(0x000000,1);
   renderer.autoClear=false;
@@ -425,14 +402,52 @@ function init(){
   cam=new THREE.OrthographicCamera(0,1,1,0,-1,1);
   scene=new THREE.Scene();
 
+  videoTex=new THREE.VideoTexture(video);
+  videoTex.minFilter=videoTex.magFilter=THREE.LinearFilter;
+  videoTex.format=THREE.RGBFormat;
+
+  makeTrailRT();
+
   fadeScene=new THREE.Scene();
-  fadeMat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.18,depthTest:false});
+  fadeMat=new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:params.fade,depthTest:false});
   const fq=new THREE.Mesh(new THREE.PlaneGeometry(1,1),fadeMat);
   fq.position.set(0.5,0.5,0); fq.frustumCulled=false; fadeScene.add(fq);
 
+  compMat=new THREE.ShaderMaterial({
+    uniforms:{
+      uVideo:{value:videoTex}, uTrail:{value:trailRT.texture},
+      uScale:{value:new THREE.Vector2(1,1)}, uMirror:{value:1}, uVideoAmt:{value:params.vid}
+    },
+    vertexShader:[
+      'varying vec2 vUv;',
+      'void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }'
+    ].join('\n'),
+    fragmentShader:[
+      'varying vec2 vUv;',
+      'uniform sampler2D uVideo,uTrail;',
+      'uniform vec2 uScale; uniform float uMirror,uVideoAmt;',
+      'void main(){',
+      '  vec2 uv=vUv;',
+      '  uv.x=mix(uv.x,1.0-uv.x,uMirror);',
+      '  uv=(uv-0.5)*uScale+0.5;',
+      '  vec3 v=texture2D(uVideo,uv).rgb;',
+      // pull the camera image toward grey so the coloured light stays readable on top
+      '  float l=dot(v,vec3(0.2126,0.7152,0.0722));',
+      '  v=mix(vec3(l),v,0.5)*uVideoAmt;',
+      '  vec3 t=texture2D(uTrail,vUv).rgb;',
+      '  vec3 c=v+t;',
+      '  c=c/(1.0+c*0.22);',
+      '  gl_FragColor=vec4(c,1.0); }'
+    ].join('\n'),
+    depthTest:false,depthWrite:false
+  });
+  compScene=new THREE.Scene();
+  const cq=new THREE.Mesh(new THREE.PlaneGeometry(1,1),compMat);
+  cq.position.set(0.5,0.5,0); cq.frustumCulled=false; compScene.add(cq);
+
   maskScene=new THREE.Scene();
   maskMesh=new THREE.Mesh(new THREE.PlaneGeometry(1,1),
-    new THREE.MeshBasicMaterial({map:null,depthTest:false}));
+    new THREE.MeshBasicMaterial({map:maskTex||null,depthTest:false}));
   maskMesh.position.set(0.5,0.5,0); maskMesh.frustumCulled=false; maskScene.add(maskMesh);
 
   allocParticles();
@@ -441,54 +456,67 @@ function init(){
   addEventListener('orientationchange',()=>setTimeout(onResize,250));
 }
 
+function makeTrailRT(){
+  const dpr=renderer.getPixelRatio();
+  const w=Math.max(2,Math.round(innerWidth*dpr)), h=Math.max(2,Math.round(innerHeight*dpr));
+  if(trailRT) trailRT.dispose();
+  trailRT=new THREE.WebGLRenderTarget(w,h,{
+    minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,
+    format:THREE.RGBAFormat,depthBuffer:false,stencilBuffer:false
+  });
+  renderer.setRenderTarget(trailRT);
+  renderer.clear(true,false,false);
+  renderer.setRenderTarget(null);
+  if(compMat) compMat.uniforms.uTrail.value=trailRT.texture;
+}
+
 function onResize(){
   renderer.setSize(innerWidth,innerHeight);
+  makeTrailRT();
   updateCover();
 }
 
 async function start(){
   if(!navigator.mediaDevices?.getUserMedia){
-    fail('HTTPS（またはlocalhost）でないとカメラを使えません。GitHub Pages などに置いてから開いてください。');
-    return;
+    fail('HTTPS（またはlocalhost）でないとカメラを使えません。GitHub Pages などに置いてから開いてください。'); return;
   }
   try{
-    if(!segmenter && !useFallback){
+    if(!segmenter&&!useFallback){
       try{ await loadSegmenter(); }
       catch(e){ useFallback=true; statusEl.textContent='人物検出モデルを読めなかったので簡易モードで動かします'; }
     }
     if(stream) stream.getTracks().forEach(t=>t.stop());
     stream=await navigator.mediaDevices.getUserMedia({
-      audio:false, video:{facingMode:facing,width:{ideal:640},height:{ideal:480}}
+      audio:false,video:{facingMode:facing,width:{ideal:640},height:{ideal:480}}
     });
     video.srcObject=stream;
     await video.play();
 
-    mirror = facing==='user' ? 1 : 0;
+    mirror = facing==='user'?1:0;
+    videoAspect=(video.videoWidth||640)/(video.videoHeight||480);
     if(!started){ started=true; init(); gate.style.display='none'; ui.style.display='flex'; bindUI(); showUI(); }
     fbCanvas=null;
-    ensureGrid(video.videoWidth||640, video.videoHeight||480);
+    ensureGrid(video.videoWidth||640,video.videoHeight||480);
     updateCover();
     running=true; last=performance.now(); requestAnimationFrame(loop);
   }catch(e){
     fail('カメラを開けませんでした（'+(e?.name||'error')+'）。ブラウザ設定でカメラを許可するか、HTTPSで開き直してください。');
   }
 }
-
 function fail(m){ errEl.textContent=m; errEl.style.display='block'; statusEl.textContent=''; }
 
 /* ---------- ui ---------- */
 let hideTimer=null;
-function showUI(){
-  ui.classList.remove('hidden');
-  clearTimeout(hideTimer);
-  hideTimer=setTimeout(()=>ui.classList.add('hidden'),5000);
-}
+function showUI(){ ui.classList.remove('hidden'); clearTimeout(hideTimer);
+  hideTimer=setTimeout(()=>ui.classList.add('hidden'),5000); }
+
 function bindUI(){
   const on=(id,fn)=>$(id).addEventListener('input',e=>{fn(parseFloat(e.target.value));showUI();});
+  on('vid',  v=>params.vid=v);
   on('repel',v=>params.repel=v);
   on('gush', v=>params.gush=v);
-  on('flow', v=>params.flow=v);
   on('fade', v=>params.fade=v);
+  on('hue',  v=>params.hue=v);
   $('count').addEventListener('change',e=>{buildPoints(parseInt(e.target.value,10));showUI();});
 
   const maskBtn=$('maskBtn');
@@ -497,18 +525,15 @@ function bindUI(){
     maskBtn.textContent=showMask?'粒にもどす':'判定を見る'; showUI();
   });
   const invBtn=$('invBtn');
-  invBtn.addEventListener('click',()=>{ invert=!invert; invBtn.classList.toggle('on',invert); showUI(); });
+  invBtn.addEventListener('click',()=>{invert=!invert; invBtn.classList.toggle('on',invert); showUI();});
   $('camBtn').addEventListener('click',()=>{
-    facing = facing==='user' ? 'environment' : 'user';
-    running=false; start(); showUI();
+    facing=facing==='user'?'environment':'user'; running=false; start(); showUI();
   });
   $('fsBtn').addEventListener('click',()=>{
     const el=document.documentElement;
-    if(!document.fullscreenElement && !document.webkitFullscreenElement){
+    if(!document.fullscreenElement&&!document.webkitFullscreenElement)
       (el.requestFullscreen||el.webkitRequestFullscreen||(()=>{})).call(el);
-    }else{
-      (document.exitFullscreen||document.webkitExitFullscreen||(()=>{})).call(document);
-    }
+    else (document.exitFullscreen||document.webkitExitFullscreen||(()=>{})).call(document);
     showUI();
   });
   renderer.domElement.addEventListener('pointerdown',showUI);
